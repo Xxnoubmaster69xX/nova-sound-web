@@ -2,7 +2,16 @@ import React, { useState } from 'react';
 import { usePlanta, CATALOGO_DEFECTOS_OFICIALES } from '../context/PlantaContext';
 
 export default function PruebasStation() {
-  const { sesion, ordenes, pruebasFuncionales, evaluarPruebaFuncional, abrirTrazabilidad } = usePlanta();
+  const {
+    sesion,
+    ordenes,
+    pruebasFuncionales,
+    evaluarPruebaFuncional,
+    abrirTrazabilidad,
+    buscarTrazabilidad,
+    consultarTrazabilidadRemota,
+    unidades,
+  } = usePlanta();
 
   const [ordenId, setOrdenId] = useState<number>(ordenes[0]?.id || 1);
   const [encendido, setEncendido] = useState<boolean>(true);
@@ -10,6 +19,8 @@ export default function PruebasStation() {
   const [carga, setCarga] = useState<boolean>(true);
   const [bluetooth, setBluetooth] = useState<boolean>(true);
   const [defectoFallaId, setDefectoFallaId] = useState<number>(5);
+  const [busquedaSerie, setBusquedaSerie] = useState<string>(unidades[0]?.numero_serie || '');
+  const [resultadoSerie, setResultadoSerie] = useState<ReturnType<typeof buscarTrazabilidad> | null>(null);
   const [resultadoReciente, setResultadoReciente] = useState<{
     aprobada: boolean;
     serie?: string;
@@ -19,14 +30,23 @@ export default function PruebasStation() {
   const ordenActiva = ordenes.find((o) => o.id === ordenId);
   const todosChecksOk = encendido && audio && carga && bluetooth;
 
-  const handleEvaluar = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const ejecutarEvaluacion = async (aprobarForzado: boolean) => {
     if (!ordenActiva) return;
+    const checks = aprobarForzado
+      ? { encendido: true, audio: true, carga: true, bluetooth: true }
+      : { encendido, audio: todosChecksOk ? false : audio, carga, bluetooth };
+
+    if (aprobarForzado && !todosChecksOk) {
+      setEncendido(true);
+      setAudio(true);
+      setCarga(true);
+      setBluetooth(true);
+    }
 
     const res = await evaluarPruebaFuncional(
       ordenActiva.id,
-      { encendido, audio, carga, bluetooth },
-      todosChecksOk ? undefined : defectoFallaId
+      checks,
+      aprobarForzado ? undefined : defectoFallaId
     );
 
     if (res.ok) {
@@ -50,6 +70,18 @@ export default function PruebasStation() {
     }
   };
 
+  const handleEvaluar = async (e: React.FormEvent) => {
+    e.preventDefault();
+    await ejecutarEvaluacion(todosChecksOk);
+  };
+
+  const handleBuscarSerie = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!busquedaSerie.trim()) return;
+    const res = await consultarTrazabilidadRemota(busquedaSerie.trim());
+    setResultadoSerie(res || buscarTrazabilidad(busquedaSerie.trim()));
+  };
+
   const pruebasAprobadas = pruebasFuncionales.filter((p) => p.aprobada).length;
   const pruebasRechazadas = pruebasFuncionales.filter((p) => !p.aprobada).length;
 
@@ -63,7 +95,7 @@ export default function PruebasStation() {
             <span className="station-badge-code">Módulo 03 · Pruebas Funcionales y Serie</span>
             <h1 className="station-title">Prueba Funcional Acústica y Eléctrica</h1>
             <span className="station-subtitle">
-              Validación automatizada de los 4 parámetros clave antes de emitir número de serie
+              Orden: {ordenActiva?.folio || '--'} | Modelo: {ordenActiva?.modelo_nombre || '--'} | Línea: {sesion.linea.nombre_linea} | Operario: {sesion.usuario.nombre_completo}
             </span>
           </div>
         </div>
@@ -260,38 +292,53 @@ export default function PruebasStation() {
                   </div>
                 </div>
 
-                {!todosChecksOk && (
-                  <div className="form-group" style={{ background: 'rgba(239, 68, 68, 0.08)', padding: '0.8rem', border: '1px solid var(--danger)' }}>
-                    <label className="form-label" style={{ color: 'var(--danger)' }}>
-                      DEFECTO ASOCIADO A LA FALLA DETECTADA (CATÁLOGO OFICIAL)
-                    </label>
-                    <select
-                      className="form-select"
-                      value={defectoFallaId}
-                      onChange={(e) => setDefectoFallaId(Number(e.target.value))}
-                    >
-                      {CATALOGO_DEFECTOS_OFICIALES.filter((d) => d.categoria === 'Funcional').map((d) => (
-                        <option key={d.id} value={d.id}>
-                          {d.descripcion} ({d.severidad})
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                )}
-
-                <button
-                  type="submit"
-                  className={todosChecksOk ? 'btn btn-yellow' : 'btn btn-danger'}
-                  style={{ height: '3.2rem', fontSize: '0.95rem' }}
-                >
-                  {todosChecksOk ? 'APROBAR PRUEBA Y GENERAR NÚMERO DE SERIE' : 'REGISTRAR FALLA (SIN GENERAR SERIE)'}
-                </button>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+                  <button
+                    type="button"
+                    onClick={() => ejecutarEvaluacion(true)}
+                    className="btn btn-yellow"
+                    style={{ height: '3.2rem', fontSize: '0.9rem' }}
+                  >
+                    APROBAR UNIDAD
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => ejecutarEvaluacion(false)}
+                    className="btn btn-danger"
+                    style={{ height: '3.2rem', fontSize: '0.9rem' }}
+                  >
+                    RECHAZAR UNIDAD
+                  </button>
+                </div>
               </form>
             </div>
           </div>
 
-          {/* INFORMACIÓN DE REGLAS DE NEGOCIO */}
+          {/* COLUMNA DERECHA: SELECCIONAR DEFECTO + REGLAS + SIMULADOR (SPEC ORIGINAL) */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            <div className="panel">
+              <div className="panel-header">
+                <span className="panel-title">SELECCIONAR DEFECTO</span>
+                <span className="badge badge-warn">DEFECT_CATALOG</span>
+              </div>
+              <div className="panel-body">
+                <div className="form-group">
+                  <label className="form-label">CATÁLOGO DE DEFECTOS FUNCIONALES (RN-04)</label>
+                  <select
+                    className="form-select"
+                    value={defectoFallaId}
+                    onChange={(e) => setDefectoFallaId(Number(e.target.value))}
+                  >
+                    {CATALOGO_DEFECTOS_OFICIALES.filter((d) => d.categoria === 'Funcional').map((d) => (
+                      <option key={d.id} value={d.id}>
+                        {d.descripcion} ({d.severidad})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            </div>
+
             <div className="panel">
               <div className="panel-header">
                 <span className="panel-title">REGLAS DE OPERACIÓN (RN-04)</span>
@@ -359,6 +406,64 @@ export default function PruebasStation() {
                   SIMULAR UNIDAD MUERTA (NO ENCIENDE)
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+
+        {/* PANEL DE BÚSQUEDA POR NÚMERO DE SERIE (SPEC ORIGINAL PÁG. 4 ARRIBA) */}
+        <div className="panel">
+          <div className="panel-header">
+            <span className="panel-title">BÚSQUEDA DE UNIDAD POR NÚMERO DE SERIE</span>
+            <span className="badge badge-accent">SERIAL_LOOKUP</span>
+          </div>
+          <div className="panel-body">
+            <form onSubmit={handleBuscarSerie} style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', marginBottom: '1rem' }}>
+              <label className="form-label" style={{ margin: 0, whiteSpace: 'nowrap' }}>
+                INGRESAR NÚMERO DE SERIE:
+              </label>
+              <input
+                type="text"
+                placeholder="Ej. NS-2026-0001"
+                className="form-input"
+                style={{ flex: 1 }}
+                value={busquedaSerie}
+                onChange={(e) => setBusquedaSerie(e.target.value.toUpperCase())}
+              />
+              <button type="submit" className="btn btn-carbon" style={{ minWidth: '120px' }}>
+                BUSCAR
+              </button>
+            </form>
+            <div
+              style={{
+                border: '1px solid var(--border-default)',
+                background: 'var(--bg-surface-elevated)',
+                padding: '1rem',
+                fontSize: '0.85rem',
+              }}
+            >
+              <div className="form-label" style={{ marginBottom: '0.5rem' }}>
+                RESULTADO DE LA BÚSQUEDA
+              </div>
+              {!resultadoSerie || !resultadoSerie.unidad ? (
+                <div style={{ color: 'var(--text-muted)' }}>
+                  [INGRESE UN NÚMERO DE SERIE Y PRESIONE BUSCAR PARA VER SU ESTADO]
+                </div>
+              ) : (
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem' }}>
+                  <div>
+                    <strong>{resultadoSerie.unidad.numero_serie}</strong> · {resultadoSerie.unidad.modelo} ({resultadoSerie.unidad.color}) · Cliente: {resultadoSerie.unidad.cliente} · Estado:{' '}
+                    <span className="badge badge-info">{resultadoSerie.unidad.estado_calidad_nombre}</span>
+                  </div>
+                  <button
+                    type="button"
+                    className="btn btn-outline"
+                    style={{ height: '2rem', fontSize: '0.75rem' }}
+                    onClick={() => abrirTrazabilidad(resultadoSerie.unidad!.numero_serie)}
+                  >
+                    ABRIR FICHA 360°
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         </div>

@@ -7,6 +7,7 @@ import {
 
 export default function EmbarquesStation() {
   const {
+    sesion,
     embarques,
     cajas,
     cajasAsignadasEmbarque,
@@ -18,6 +19,22 @@ export default function EmbarquesStation() {
 
   const [embarqueSeleccionadoId, setEmbarqueSeleccionadoId] = useState<number>(embarques[0]?.id || 1);
   const [modalNuevo, setModalNuevo] = useState<boolean>(false);
+  const [modalEditar, setModalEditar] = useState<boolean>(false);
+  const [busquedaEmb, setBusquedaEmb] = useState<string>('');
+  const [filtroClienteEmb, setFiltroClienteEmb] = useState<string>('Todos');
+  const [filtroEstadoEmb, setFiltroEstadoEmb] = useState<string>('Todos');
+  const [canceladosLocal, setCanceladosLocal] = useState<number[]>([]);
+  const [edicionesLocal, setEdicionesLocal] = useState<
+    Record<number, { pedido: string; cliente: string; transportista: string; fechaProg: string; obs: string }>
+  >({});
+
+  // Estado temporal del modal Editar Embarque
+  const [editRef, setEditRef] = useState<string>('');
+  const [editPedido, setEditPedido] = useState<string>('');
+  const [editCliente, setEditCliente] = useState<string>('');
+  const [editTransportista, setEditTransportista] = useState<string>('');
+  const [editFechaProg, setEditFechaProg] = useState<string>('');
+  const [editObs, setEditObs] = useState<string>('');
 
   // Formulario nuevo embarque
   const [pedido, setPedido] = useState<string>('PED-2026-001');
@@ -30,7 +47,64 @@ export default function EmbarquesStation() {
 
   const [mensaje, setMensaje] = useState<{ tipo: 'ok' | 'err'; texto: string } | null>(null);
 
-  const embarqueActual = embarques.find((e) => e.id === embarqueSeleccionadoId);
+  const embarqueBase = embarques.find((e) => e.id === embarqueSeleccionadoId);
+  const edicionActiva = embarqueBase ? edicionesLocal[embarqueBase.id] : undefined;
+  const embarqueActual = embarqueBase
+    ? {
+        ...embarqueBase,
+        id_pedido: edicionActiva?.pedido ?? embarqueBase.id_pedido,
+        cliente_nombre: edicionActiva?.cliente ?? embarqueBase.cliente_nombre,
+        transportista_nombre: edicionActiva?.transportista ?? embarqueBase.transportista_nombre,
+        fecha_programada: edicionActiva?.fechaProg ?? embarqueBase.fecha_programada,
+        estado: canceladosLocal.includes(embarqueBase.id) ? 'Cancelado' : embarqueBase.estado,
+      }
+    : undefined;
+
+  const embarquesFiltrados = embarques.filter((e) => {
+    const ed = edicionesLocal[e.id];
+    const pedidoVis = ed?.pedido ?? e.id_pedido;
+    const clienteVis = ed?.cliente ?? (e.cliente_nombre || '');
+    const estadoVis = canceladosLocal.includes(e.id) ? 'Cancelado' : e.estado;
+    const q = busquedaEmb.trim().toLowerCase();
+    const matchQ =
+      !q ||
+      e.referencia_embarque.toLowerCase().includes(q) ||
+      String(pedidoVis).toLowerCase().includes(q);
+    const matchCliente = filtroClienteEmb === 'Todos' || clienteVis === filtroClienteEmb;
+    const matchEstado = filtroEstadoEmb === 'Todos' || estadoVis === filtroEstadoEmb;
+    return matchQ && matchCliente && matchEstado;
+  });
+
+  const abrirModalEditar = (embId: number) => {
+    const target = embarques.find((x) => x.id === embId);
+    if (!target) return;
+    const ed = edicionesLocal[target.id];
+    setEmbarqueSeleccionadoId(target.id);
+    setEditRef(target.referencia_embarque);
+    setEditPedido(String(ed?.pedido ?? target.id_pedido));
+    setEditCliente(ed?.cliente ?? (target.cliente_nombre || CATALOGO_CLIENTES[0].nombre_cliente));
+    setEditTransportista(ed?.transportista ?? (target.transportista_nombre || CATALOGO_TRANSPORTISTAS[0].nombre));
+    setEditFechaProg(ed?.fechaProg ?? target.fecha_programada);
+    setEditObs(ed?.obs ?? '');
+    setModalEditar(true);
+  };
+
+  const handleGuardarEdicion = (ev: React.FormEvent) => {
+    ev.preventDefault();
+    if (!embarqueBase) return;
+    setEdicionesLocal((prev) => ({
+      ...prev,
+      [embarqueBase.id]: {
+        pedido: editPedido,
+        cliente: editCliente,
+        transportista: editTransportista,
+        fechaProg: editFechaProg,
+        obs: editObs,
+      },
+    }));
+    setModalEditar(false);
+    setMensaje({ tipo: 'ok', texto: `Cambios guardados en embarque ${editRef}` });
+  };
   const cajasAsignadasIds = cajasAsignadasEmbarque[embarqueSeleccionadoId] || [];
   const cajasAsignadas = cajas.filter((c) => cajasAsignadasIds.includes(c.id));
 
@@ -155,11 +229,63 @@ export default function EmbarquesStation() {
           </div>
         </div>
 
-        {/* TABLA RESUMEN DE EMBARQUES (SPEC ORIGINAL) */}
+        {/* TABLA RESUMEN DE EMBARQUES (SPEC ORIGINAL PÁG. 8 ARRIBA) */}
         <div className="panel">
           <div className="panel-header">
-            <span className="panel-title">EMBARQUES PROGRAMADOS ({embarques.length})</span>
+            <span className="panel-title">EMBARQUES PROGRAMADOS ({embarquesFiltrados.length})</span>
             <span className="badge badge-accent">DESPACHO_LOG</span>
+          </div>
+          {/* BARRA DE FILTROS (BUSCAR / CLIENTE / ESTADO) */}
+          <div
+            style={{
+              display: 'flex',
+              gap: '0.75rem',
+              alignItems: 'center',
+              padding: '0.75rem 1rem',
+              borderBottom: '1px solid var(--border-default)',
+              background: 'var(--bg-surface-elevated)',
+              flexWrap: 'wrap',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flex: 1, minWidth: '200px' }}>
+              <label className="form-label" style={{ margin: 0, whiteSpace: 'nowrap' }}>BUSCAR:</label>
+              <input
+                type="text"
+                placeholder="Referencia o folio de pedido..."
+                className="form-input"
+                style={{ height: '2rem', fontSize: '0.8rem' }}
+                value={busquedaEmb}
+                onChange={(e) => setBusquedaEmb(e.target.value)}
+              />
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <label className="form-label" style={{ margin: 0, whiteSpace: 'nowrap' }}>CLIENTE:</label>
+              <select
+                className="form-select"
+                style={{ height: '2rem', fontSize: '0.8rem' }}
+                value={filtroClienteEmb}
+                onChange={(e) => setFiltroClienteEmb(e.target.value)}
+              >
+                <option value="Todos">Todos</option>
+                {CATALOGO_CLIENTES.map((c) => (
+                  <option key={c.id} value={c.nombre_cliente}>{c.nombre_cliente}</option>
+                ))}
+              </select>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <label className="form-label" style={{ margin: 0, whiteSpace: 'nowrap' }}>ESTADO:</label>
+              <select
+                className="form-select"
+                style={{ height: '2rem', fontSize: '0.8rem' }}
+                value={filtroEstadoEmb}
+                onChange={(e) => setFiltroEstadoEmb(e.target.value)}
+              >
+                <option value="Todos">Todos</option>
+                <option value="Programado">Programado</option>
+                <option value="Despachado">Despachado</option>
+                <option value="Cancelado">Cancelado</option>
+              </select>
+            </div>
           </div>
           <div className="panel-body" style={{ padding: 0 }}>
             <div className="table-container">
@@ -177,9 +303,11 @@ export default function EmbarquesStation() {
                   </tr>
                 </thead>
                 <tbody>
-                  {embarques.map((e) => {
+                  {embarquesFiltrados.map((e) => {
                     const countCajas = (cajasAsignadasEmbarque[e.id] || []).length;
                     const seleccionado = e.id === embarqueSeleccionadoId;
+                    const ed = edicionesLocal[e.id];
+                    const estadoVis = canceladosLocal.includes(e.id) ? 'Cancelado' : e.estado;
                     return (
                       <tr
                         key={e.id}
@@ -190,28 +318,35 @@ export default function EmbarquesStation() {
                         onClick={() => setEmbarqueSeleccionadoId(e.id)}
                       >
                         <td style={{ fontFamily: 'var(--font-mono)', fontWeight: 700 }}>{e.referencia_embarque}</td>
-                        <td style={{ fontFamily: 'var(--font-mono)' }}>{e.id_pedido}</td>
-                        <td>{e.cliente_nombre}</td>
-                        <td>{e.transportista_nombre}</td>
-                        <td style={{ fontFamily: 'var(--font-mono)' }}>{e.fecha_programada}</td>
+                        <td style={{ fontFamily: 'var(--font-mono)' }}>{ed?.pedido ?? e.id_pedido}</td>
+                        <td>{ed?.cliente ?? e.cliente_nombre}</td>
+                        <td>{ed?.transportista ?? e.transportista_nombre}</td>
+                        <td style={{ fontFamily: 'var(--font-mono)' }}>{ed?.fechaProg ?? e.fecha_programada}</td>
                         <td>{countCajas} Cajas</td>
                         <td>
-                          <span className={`badge ${e.estado === 'Despachado' ? 'badge-ok' : 'badge-info'}`}>
-                            {e.estado}
+                          <span className={`badge ${estadoVis === 'Despachado' ? 'badge-ok' : estadoVis === 'Cancelado' ? 'badge-danger' : 'badge-info'}`}>
+                            {estadoVis}
                           </span>
                         </td>
-                        <td>
-                          <button
-                            type="button"
-                            className={`btn ${seleccionado ? 'btn-yellow' : 'btn-outline'}`}
-                            style={{ height: '1.8rem', padding: '0 0.6rem', fontSize: '0.65rem' }}
-                            onClick={(ev) => {
-                              ev.stopPropagation();
-                              setEmbarqueSeleccionadoId(e.id);
-                            }}
-                          >
-                            {seleccionado ? 'SELECCIONADO' : 'VER DETALLE'}
-                          </button>
+                        <td onClick={(ev) => ev.stopPropagation()}>
+                          <div style={{ display: 'flex', gap: '0.4rem' }}>
+                            <button
+                              type="button"
+                              className={`btn ${seleccionado ? 'btn-yellow' : 'btn-outline'}`}
+                              style={{ height: '1.8rem', padding: '0 0.55rem', fontSize: '0.65rem' }}
+                              onClick={() => setEmbarqueSeleccionadoId(e.id)}
+                            >
+                              VER
+                            </button>
+                            <button
+                              type="button"
+                              className="btn btn-outline"
+                              style={{ height: '1.8rem', padding: '0 0.55rem', fontSize: '0.65rem' }}
+                              onClick={() => abrirModalEditar(e.id)}
+                            >
+                              EDITAR
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     );
@@ -221,6 +356,118 @@ export default function EmbarquesStation() {
             </div>
           </div>
         </div>
+
+        {/* DETALLE DEL EMBARQUE SELECCIONADO (SPEC ORIGINAL PÁG. 9 ARRIBA) */}
+        {embarqueActual && (
+          <div className="panel">
+            <div className="panel-header">
+              <div>
+                <span className="panel-title">{embarqueActual.referencia_embarque}</span>
+                <span style={{ marginLeft: '0.75rem', fontSize: '0.75rem', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
+                  Pedido {embarqueActual.id_pedido}
+                </span>
+              </div>
+              <div style={{ display: 'flex', gap: '0.5rem' }}>
+                {embarqueActual.estado !== 'Despachado' && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setCanceladosLocal((prev) =>
+                        prev.includes(embarqueActual.id) ? prev : [...prev, embarqueActual.id]
+                      );
+                      setMensaje({ tipo: 'err', texto: `Embarque ${embarqueActual.referencia_embarque} marcado como Cancelado` });
+                    }}
+                    className="btn btn-danger"
+                    style={{ height: '2rem', fontSize: '0.72rem' }}
+                  >
+                    CANCELAR EMBARQUE
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => abrirModalEditar(embarqueActual.id)}
+                  className="btn btn-outline"
+                  style={{ height: '2rem', fontSize: '0.72rem' }}
+                >
+                  EDITAR DATOS
+                </button>
+                {embarqueActual.estado !== 'Despachado' && embarqueActual.estado !== 'Cancelado' && (
+                  <button
+                    type="button"
+                    onClick={handleDespachar}
+                    disabled={cajasAsignadas.length === 0}
+                    className="btn btn-yellow"
+                    style={{ height: '2rem', fontSize: '0.72rem' }}
+                  >
+                    CONFIRMAR SALIDA
+                  </button>
+                )}
+              </div>
+            </div>
+            <div className="panel-body">
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '1.5rem' }}>
+                {/* FICHA DATOS DEL EMBARQUE */}
+                <div style={{ background: 'var(--bg-surface-elevated)', padding: '1rem', border: '1px solid var(--border-default)', fontSize: '0.82rem', display: 'flex', flexDirection: 'column', gap: '0.45rem' }}>
+                  <div className="form-label" style={{ marginBottom: '0.25rem' }}>DATOS DEL EMBARQUE</div>
+                  <div><strong>Cliente:</strong> {embarqueActual.cliente_nombre}</div>
+                  <div><strong>Pedido:</strong> {embarqueActual.id_pedido}</div>
+                  <div><strong>Transportista:</strong> {embarqueActual.transportista_nombre}</div>
+                  <div><strong>Chofer / Placas:</strong> {embarqueActual.nombre_chofer} · {embarqueActual.placas_unidad}</div>
+                  <div><strong>Programada:</strong> {embarqueActual.fecha_programada}</div>
+                  <div><strong>Estado:</strong> {embarqueActual.estado}</div>
+                  <div><strong>Creado por:</strong> {sesion.usuario.nombre_completo}</div>
+                </div>
+
+                {/* TABLA DE CAJAS DEL EMBARQUE */}
+                <div className="table-container" style={{ border: '1px solid var(--border-default)' }}>
+                  <table className="tech-table">
+                    <thead>
+                      <tr>
+                        <th>CAJA</th>
+                        <th>MODELO / COLOR</th>
+                        <th>ESTADO</th>
+                        <th>CALIDAD</th>
+                        <th>PIEZAS</th>
+                        <th>ACCIÓN</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {cajasAsignadas.length === 0 ? (
+                        <tr>
+                          <td colSpan={6} style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '1.25rem' }}>
+                            [SIN CAJAS ASIGNADAS - AGREGUE DESDE CAJAS CERRADAS ABAJO]
+                          </td>
+                        </tr>
+                      ) : (
+                        cajasAsignadas.map((c) => (
+                          <tr key={c.id}>
+                            <td style={{ fontFamily: 'var(--font-mono)', fontWeight: 700 }}>{c.codigo_caja}</td>
+                            <td>{c.modelo_nombre} ({c.color_nombre})</td>
+                            <td><span className="badge badge-dark">{c.estado}</span></td>
+                            <td><span className="badge badge-ok">Liberada</span></td>
+                            <td style={{ fontFamily: 'var(--font-mono)' }}>{c.piezas_actuales || 0}</td>
+                            <td>
+                              {embarqueActual.estado !== 'Despachado' && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleRetirarCaja(c.id)}
+                                  className="btn btn-outline"
+                                  style={{ height: '1.7rem', padding: '0 0.5rem', fontSize: '0.65rem' }}
+                                >
+                                  RETIRAR
+                                </button>
+                              )}
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* SELECTOR DE EMBARQUE */}
         <div className="panel">
@@ -388,6 +635,68 @@ export default function EmbarquesStation() {
           </div>
         </div>
       </div>
+
+      {/* MODAL EDITAR EMBARQUE (SPEC ORIGINAL PÁG. 8 ABAJO) */}
+      {modalEditar && (
+        <div className="modal-overlay">
+          <div className="modal-content">
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
+              <span className="station-title" style={{ fontSize: '1.2rem' }}>
+                EDITAR EMBARQUE
+              </span>
+              <button onClick={() => setModalEditar(false)} className="btn btn-outline" style={{ height: '2rem' }}>
+                CERRAR
+              </button>
+            </div>
+            <form onSubmit={handleGuardarEdicion} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+                <div className="form-group">
+                  <label className="form-label">REFERENCIA DE EMBARQUE</label>
+                  <input type="text" readOnly className="form-input" value={editRef} />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">PEDIDO</label>
+                  <input type="text" required className="form-input" value={editPedido} onChange={(e) => setEditPedido(e.target.value)} />
+                </div>
+              </div>
+              <div className="form-group">
+                <label className="form-label">CLIENTE</label>
+                <select className="form-select" value={editCliente} onChange={(e) => setEditCliente(e.target.value)}>
+                  {CATALOGO_CLIENTES.map((c) => (
+                    <option key={c.id} value={c.nombre_cliente}>{c.nombre_cliente}</option>
+                  ))}
+                </select>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+                <div className="form-group">
+                  <label className="form-label">TRANSPORTISTA</label>
+                  <select className="form-select" value={editTransportista} onChange={(e) => setEditTransportista(e.target.value)}>
+                    {CATALOGO_TRANSPORTISTAS.map((t) => (
+                      <option key={t.id} value={t.nombre}>{t.nombre}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label className="form-label">FECHA Y HORA PROGRAMADA</label>
+                  <input type="text" required className="form-input" value={editFechaProg} onChange={(e) => setEditFechaProg(e.target.value)} />
+                </div>
+              </div>
+              <div className="form-group">
+                <label className="form-label">OBSERVACIONES</label>
+                <textarea rows={2} className="form-textarea" value={editObs} onChange={(e) => setEditObs(e.target.value)} />
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem' }}>
+                <button type="button" onClick={() => setModalEditar(false)} className="btn btn-outline">
+                  CANCELAR
+                </button>
+                <button type="submit" className="btn btn-yellow">
+                  GUARDAR CAMBIOS
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* MODAL PROGRAMAR EMBARQUE */}
       {modalNuevo && (

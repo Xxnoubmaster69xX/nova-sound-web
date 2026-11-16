@@ -9,7 +9,22 @@ export default function CalidadStation() {
   const [estadoResultadoId, setEstadoResultadoId] = useState<number>(EstadosCalidadEnum.APROBADA);
   const [defectoId, setDefectoId] = useState<number>(1);
   const [comentarios, setComentarios] = useState<string>('');
+  const [checkEncendido, setCheckEncendido] = useState<boolean>(true);
+  const [checkAudio, setCheckAudio] = useState<boolean>(true);
+  const [checkBateria, setCheckBateria] = useState<boolean>(true);
+  const [checkBt, setCheckBt] = useState<boolean>(true);
   const [mensaje, setMensaje] = useState<{ tipo: 'ok' | 'err'; texto: string } | null>(null);
+
+  const reiniciarFormulario = () => {
+    setEstadoResultadoId(EstadosCalidadEnum.APROBADA);
+    setDefectoId(1);
+    setComentarios('');
+    setCheckEncendido(true);
+    setCheckAudio(true);
+    setCheckBateria(true);
+    setCheckBt(true);
+    setMensaje(null);
+  };
 
   // Filtrado de unidad seleccionada
   const unidadActual = unidades.find((u) => u.numero_serie.toUpperCase() === numeroSerie.trim().toUpperCase());
@@ -123,6 +138,34 @@ export default function CalidadStation() {
           </div>
         </div>
 
+        {/* FRANJA PENDIENTES DE INSPECCIÓN (SPEC ORIGINAL PÁG. 4 ABAJO) */}
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.6rem',
+            padding: '0.65rem 1rem',
+            background: 'var(--bg-surface-elevated)',
+            border: '1px solid var(--border-default)',
+            flexWrap: 'wrap',
+          }}
+        >
+          <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.75rem', fontWeight: 800 }}>
+            PENDIENTES DE INSPECCIÓN ({unidades.length}):
+          </span>
+          {unidades.slice(0, 8).map((u) => (
+            <button
+              key={u.id}
+              type="button"
+              onClick={() => setNumeroSerie(u.numero_serie)}
+              className={`btn ${numeroSerie === u.numero_serie ? 'btn-yellow' : 'btn-outline'}`}
+              style={{ height: '1.8rem', padding: '0 0.6rem', fontSize: '0.7rem', fontFamily: 'var(--font-mono)' }}
+            >
+              {u.numero_serie}
+            </button>
+          ))}
+        </div>
+
         {/* WORK AREA (FULL-WIDTH TERMINAL + HISTORIAL DEBAJO COMO EN SPEC ORIGINAL) */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
           {/* FORMULARIO DE DICTAMEN */}
@@ -197,6 +240,36 @@ export default function CalidadStation() {
                   </div>
                 )}
 
+                {/* CHECKLIST DE PRUEBAS FÍSICAS (PRUEBA_FUNCIONAL) */}
+                <div className="form-group">
+                  <label className="form-label">CHECKLIST DE PRUEBAS FÍSICAS (PRUEBA_FUNCIONAL)</label>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
+                    {[
+                      { label: 'Valida Encendido Correcto', checked: checkEncendido, toggle: () => setCheckEncendido(!checkEncendido) },
+                      { label: 'Valida Audio / Frecuencias', checked: checkAudio, toggle: () => setCheckAudio(!checkAudio) },
+                      { label: 'Valida Carga de Batería', checked: checkBateria, toggle: () => setCheckBateria(!checkBateria) },
+                      { label: 'Valida Conectividad Bluetooth', checked: checkBt, toggle: () => setCheckBt(!checkBt) },
+                    ].map((chk) => (
+                      <label
+                        key={chk.label}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '0.5rem',
+                          padding: '0.55rem 0.75rem',
+                          background: 'var(--bg-surface-elevated)',
+                          border: '1px solid var(--border-default)',
+                          fontSize: '0.8rem',
+                          cursor: 'pointer',
+                        }}
+                      >
+                        <input type="checkbox" checked={chk.checked} onChange={chk.toggle} />
+                        <span>{chk.label}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+
                 {/* SELECTOR DE ESTADOS OFICIALES */}
                 <div className="form-group">
                   <label className="form-label">DISPOSICIÓN TÉCNICA (LOS 4 ESTADOS DEL CASO)</label>
@@ -257,9 +330,19 @@ export default function CalidadStation() {
                   />
                 </div>
 
-                <button type="submit" className="btn btn-yellow" style={{ height: '3.2rem', fontSize: '0.9rem' }}>
-                  REGISTRAR DICTAMEN DE CALIDAD
-                </button>
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem' }}>
+                  <button
+                    type="button"
+                    onClick={reiniciarFormulario}
+                    className="btn btn-outline"
+                    style={{ height: '3rem', padding: '0 1.25rem' }}
+                  >
+                    REINICIAR FORMULARIO
+                  </button>
+                  <button type="submit" className="btn btn-yellow" style={{ height: '3rem', padding: '0 1.5rem', fontSize: '0.9rem' }}>
+                    REGISTRAR DICTAMEN DE CALIDAD
+                  </button>
+                </div>
               </form>
             </div>
           </div>

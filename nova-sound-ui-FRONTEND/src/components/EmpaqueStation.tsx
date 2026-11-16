@@ -11,6 +11,7 @@ export default function EmpaqueStation() {
     cajas,
     detallesCajas,
     unidades,
+    solicitudesAutorizacion,
     crearCaja,
     empacarPorSerie,
     cerrarCaja,
@@ -20,6 +21,10 @@ export default function EmpaqueStation() {
 
   const [subvista, setSubvista] = useState<'empacar' | 'consultar' | 'bitacora'>('empacar');
   const [filtroCaja, setFiltroCaja] = useState<string>('');
+  const [filtroFechaCaja, setFiltroFechaCaja] = useState<string>('');
+  const [filtroEstadoCaja, setFiltroEstadoCaja] = useState<string>('Todos');
+  const [paginaConsultar, setPaginaConsultar] = useState<number>(1);
+  const [paginaBitacora, setPaginaBitacora] = useState<number>(1);
   const [cajaSeleccionadaId, setCajaSeleccionadaId] = useState<number>(cajas[0]?.id || 1);
   const [serieInput, setSerieInput] = useState<string>('');
   const [modalNuevaCaja, setModalNuevaCaja] = useState<boolean>(false);
@@ -41,6 +46,35 @@ export default function EmpaqueStation() {
   const capacidad = cajaActual?.capacidad || 6;
   const ocupacion = cajaActual?.piezas_actuales || detallesDeCaja.length;
   const porcentaje = Math.min(100, Math.round((ocupacion / capacidad) * 100));
+
+  const cajasFiltradas = cajas.filter((c) => {
+    const q = filtroCaja.trim().toLowerCase();
+    const coincideTexto =
+      !q ||
+      c.codigo_caja.toLowerCase().includes(q) ||
+      (c.cliente_nombre || '').toLowerCase().includes(q) ||
+      (c.modelo_nombre || '').toLowerCase().includes(q);
+    const coincideEstado = filtroEstadoCaja === 'Todos' || c.estado === filtroEstadoCaja;
+    return coincideTexto && coincideEstado;
+  });
+
+  const exportingCsv = () => {
+    const headers = 'Folio,Cliente,Modelo,Color,Piezas,Capacidad,Estado\n';
+    const rows = cajas
+      .map(
+        (c) =>
+          `${c.codigo_caja},${c.cliente_nombre || ''},${c.modelo_nombre || ''},${c.color_nombre || ''},${c.piezas_actuales || 0},${c.capacidad},${c.estado}`
+      )
+      .join('\n');
+    const blob = new Blob([headers + rows], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'bitacora_empaque_novasound.csv';
+    a.click();
+    URL.revokeObjectURL(url);
+    setMensaje({ tipo: 'ok', texto: 'Bitácora exportada a CSV (bitacora_empaque_novasound.csv)' });
+  };
 
   const handleCrearCaja = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -174,42 +208,84 @@ export default function EmpaqueStation() {
         </div>
 
         {subvista === 'consultar' && (
-          <div className="panel">
-            <div className="panel-header">
-              <span className="panel-title">CONSULTAR CAJAS REGISTRADAS</span>
-              <input
-                type="text"
-                placeholder="Buscar por folio, cliente o estado..."
-                className="form-input"
-                style={{ width: '260px', height: '2rem', fontSize: '0.8rem' }}
-                value={filtroCaja}
-                onChange={(e) => setFiltroCaja(e.target.value)}
-              />
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '1.5rem', alignItems: 'start' }}>
+            {/* PANEL IZQUIERDO DE FILTROS (SPEC ORIGINAL PÁG. 5 ABAJO) */}
+            <div className="panel">
+              <div className="panel-header">
+                <span className="panel-title">CONSULTAR CAJAS · FILTROS</span>
+                <span className="badge badge-accent">SEARCH</span>
+              </div>
+              <div className="panel-body" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                <div className="form-group">
+                  <label className="form-label">FOLIO</label>
+                  <input
+                    type="text"
+                    placeholder="Ej. CAJ-2026-..."
+                    className="form-input"
+                    value={filtroCaja}
+                    onChange={(e) => setFiltroCaja(e.target.value)}
+                  />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">SELECTOR FECHAS</label>
+                  <input
+                    type="date"
+                    className="form-input"
+                    value={filtroFechaCaja}
+                    onChange={(e) => setFiltroFechaCaja(e.target.value)}
+                  />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">ESTADO</label>
+                  <select
+                    className="form-select"
+                    value={filtroEstadoCaja}
+                    onChange={(e) => setFiltroEstadoCaja(e.target.value)}
+                  >
+                    <option value="Todos">Todos</option>
+                    <option value="Abierta">Abierta</option>
+                    <option value="Cerrada">Cerrada</option>
+                  </select>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setPaginaConsultar(1)}
+                  className="btn btn-yellow"
+                >
+                  BUSCAR
+                </button>
+              </div>
             </div>
-            <div className="panel-body" style={{ padding: 0 }}>
-              <div className="table-container">
-                <table className="tech-table">
-                  <thead>
-                    <tr>
-                      <th>FOLIO</th>
-                      <th>CLIENTE</th>
-                      <th>MODELO // COLOR</th>
-                      <th>OCUPACIÓN</th>
-                      <th>ESTADO</th>
-                      <th>ACCIÓN</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {cajas
-                      .filter(
-                        (c) =>
-                          !filtroCaja.trim() ||
-                          c.codigo_caja.toLowerCase().includes(filtroCaja.toLowerCase()) ||
-                          (c.cliente_nombre || '').toLowerCase().includes(filtroCaja.toLowerCase()) ||
-                          c.estado.toLowerCase().includes(filtroCaja.toLowerCase())
-                      )
-                      .map((c) => (
-                        <tr key={c.id}>
+
+            {/* PANEL DERECHO: TABLA + PAGINACIÓN + SOLICITAR REAPERTURA */}
+            <div className="panel">
+              <div className="panel-header">
+                <span className="panel-title">RESULTADOS ({cajasFiltradas.length} CAJAS)</span>
+                <span className="badge badge-info">CONSULTA</span>
+              </div>
+              <div className="panel-body" style={{ padding: 0 }}>
+                <div className="table-container">
+                  <table className="tech-table">
+                    <thead>
+                      <tr>
+                        <th>FOLIO</th>
+                        <th>CLIENTE</th>
+                        <th>MODELO // COLOR</th>
+                        <th>OCUPACIÓN</th>
+                        <th>ESTADO</th>
+                        <th>ACCIÓN</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {cajasFiltradas.map((c) => (
+                        <tr
+                          key={c.id}
+                          onClick={() => setCajaSeleccionadaId(c.id)}
+                          style={{
+                            cursor: 'pointer',
+                            background: c.id === cajaSeleccionadaId ? 'rgba(255, 250, 0, 0.12)' : undefined,
+                          }}
+                        >
                           <td style={{ fontFamily: 'var(--font-mono)', fontWeight: 700 }}>{c.codigo_caja}</td>
                           <td>{c.cliente_nombre}</td>
                           <td>
@@ -223,62 +299,96 @@ export default function EmpaqueStation() {
                               {c.estado}
                             </span>
                           </td>
-                          <td>
-                            <div style={{ display: 'flex', gap: '0.4rem' }}>
-                              <button
-                                type="button"
-                                className="btn btn-outline"
-                                style={{ height: '1.8rem', padding: '0 0.6rem', fontSize: '0.65rem' }}
-                                onClick={() => {
-                                  setCajaSeleccionadaId(c.id);
-                                  setSubvista('empacar');
-                                }}
-                              >
-                                ABRIR EN BANCO
-                              </button>
-                              {c.estado === 'Cerrada' && (
-                                <button
-                                  type="button"
-                                  className="btn btn-carbon"
-                                  style={{ height: '1.8rem', padding: '0 0.6rem', fontSize: '0.65rem' }}
-                                  onClick={() => {
-                                    setCajaSeleccionadaId(c.id);
-                                    setModalReapertura(true);
-                                  }}
-                                >
-                                  SOLICITAR REAPERTURA
-                                </button>
-                              )}
-                            </div>
+                          <td onClick={(e) => e.stopPropagation()}>
+                            <button
+                              type="button"
+                              className="btn btn-outline"
+                              style={{ height: '1.8rem', padding: '0 0.6rem', fontSize: '0.65rem' }}
+                              onClick={() => {
+                                setCajaSeleccionadaId(c.id);
+                                setSubvista('empacar');
+                              }}
+                            >
+                              ABRIR EN BANCO
+                            </button>
                           </td>
                         </tr>
                       ))}
-                  </tbody>
-                </table>
+                    </tbody>
+                  </table>
+                </div>
+                <div
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    padding: '0.75rem 1rem',
+                    borderTop: '1px solid var(--border-default)',
+                    background: 'var(--bg-surface-elevated)',
+                  }}
+                >
+                  <div style={{ display: 'flex', gap: '0.35rem', alignItems: 'center' }}>
+                    {[1, 2, 3, 4].map((p) => (
+                      <button
+                        key={p}
+                        type="button"
+                        onClick={() => setPaginaConsultar(p)}
+                        className={`btn ${paginaConsultar === p ? 'btn-yellow' : 'btn-outline'}`}
+                        style={{ height: '1.8rem', minWidth: '1.8rem', padding: '0 0.45rem', fontSize: '0.7rem' }}
+                      >
+                        {p}
+                      </button>
+                    ))}
+                  </div>
+                  <button
+                    type="button"
+                    className="btn btn-carbon"
+                    onClick={() => setModalReapertura(true)}
+                  >
+                    SOLICITAR REAPERTURA
+                  </button>
+                </div>
               </div>
             </div>
           </div>
         )}
 
         {subvista === 'bitacora' && (
-          <>
-            <div className="kpi-row">
-              <div className="kpi-card">
-                <span className="kpi-label">CAJAS ABIERTAS</span>
-                <span className="kpi-value">{cajas.filter((c) => c.estado === 'Abierta').length}</span>
-                <span className="kpi-delta" style={{ color: 'var(--ok)' }}>[En proceso de llenado]</span>
-              </div>
-              <div className="kpi-card">
-                <span className="kpi-label">CAJAS CERRADAS</span>
-                <span className="kpi-value">{cajas.filter((c) => c.estado === 'Cerrada').length}</span>
-                <span className="kpi-delta" style={{ color: 'var(--info)' }}>[Selladas y listas]</span>
-              </div>
-              <div className="kpi-card">
-                <span className="kpi-label">PIEZAS EMPACADAS</span>
-                <span className="kpi-value">{detallesCajas.filter((d) => !d.retirada).length}</span>
-                <span className="kpi-delta">[Total en cajas]</span>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '1.5rem', alignItems: 'start' }}>
+            {/* COLUMNA IZQUIERDA: CONTADORES + EXPORTAR (SPEC ORIGINAL PÁG. 5 ARRIBA) */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              <div className="panel">
+                <div className="panel-header">
+                  <span className="panel-title">BITÁCORA DEL DÍA</span>
+                  <span className="badge badge-accent">RESUMEN</span>
+                </div>
+                <div className="panel-body" style={{ display: 'flex', flexDirection: 'column', gap: '0.9rem' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0.6rem', background: 'var(--bg-surface-elevated)', border: '1px solid var(--border-default)' }}>
+                    <span style={{ fontSize: '0.85rem', fontWeight: 600 }}>Cajas Abiertas Hoy:</span>
+                    <strong style={{ fontFamily: 'var(--font-mono)', color: 'var(--ok)' }}>
+                      {cajas.filter((c) => c.estado === 'Abierta').length}
+                    </strong>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0.6rem', background: 'var(--bg-surface-elevated)', border: '1px solid var(--border-default)' }}>
+                    <span style={{ fontSize: '0.85rem', fontWeight: 600 }}>Cajas Cerradas Hoy:</span>
+                    <strong style={{ fontFamily: 'var(--font-mono)', color: 'var(--info)' }}>
+                      {cajas.filter((c) => c.estado === 'Cerrada').length}
+                    </strong>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0.6rem', background: 'var(--bg-surface-elevated)', border: '1px solid var(--border-default)' }}>
+                    <span style={{ fontSize: '0.85rem', fontWeight: 600 }}>Solicitudes de Reapertura:</span>
+                    <strong style={{ fontFamily: 'var(--font-mono)', color: 'var(--warn)' }}>
+                      {solicitudesAutorizacion.length}
+                    </strong>
+                  </div>
+                  <button type="button" onClick={exportingCsv} className="btn btn-yellow">
+                    EXPORTAR
+                  </button>
+                </div>
               </div>
             </div>
+
+            {/* COLUMNA DERECHA: TABLA HISTÓRICA + PAGINACIÓN */}
             <div className="panel">
               <div className="panel-header">
                 <span className="panel-title">BITÁCORA DE CAJAS Y MOVIMIENTOS</span>
@@ -313,13 +423,101 @@ export default function EmpaqueStation() {
                     </tbody>
                   </table>
                 </div>
+                <div
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'flex-end',
+                    gap: '0.35rem',
+                    padding: '0.75rem 1rem',
+                    borderTop: '1px solid var(--border-default)',
+                    background: 'var(--bg-surface-elevated)',
+                  }}
+                >
+                  {[1, 2, 3, 4].map((p) => (
+                    <button
+                      key={p}
+                      type="button"
+                      onClick={() => setPaginaBitacora(p)}
+                      className={`btn ${paginaBitacora === p ? 'btn-yellow' : 'btn-outline'}`}
+                      style={{ height: '1.8rem', minWidth: '1.8rem', padding: '0 0.45rem', fontSize: '0.7rem' }}
+                    >
+                      {p}
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
-          </>
+          </div>
         )}
 
         {subvista === 'empacar' && (
         <>
+        {/* BLOQUE CREAR CAJA DIRECTO (SPEC ORIGINAL PÁG. 6 ARRIBA) */}
+        <div className="panel">
+          <div className="panel-header">
+            <span className="panel-title">CREAR CAJA (FOLIO AUTOGENERADO)</span>
+            <span className="badge badge-accent">NEW_BOX</span>
+          </div>
+          <div className="panel-body">
+            <form onSubmit={handleCrearCaja} style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '0.75rem', alignItems: 'end' }}>
+              <div className="form-group">
+                <label className="form-label">FOLIO</label>
+                <input type="text" readOnly value="Autogenerado" className="form-input" />
+              </div>
+              <div className="form-group">
+                <label className="form-label">CLIENTE</label>
+                <select className="form-select" value={nuevoClienteId} onChange={(e) => setNuevoClienteId(Number(e.target.value))}>
+                  {CATALOGO_CLIENTES.map((c) => (
+                    <option key={c.id} value={c.id}>{c.nombre_cliente}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="form-group">
+                <label className="form-label">TIPO DE CAJA (MODELO)</label>
+                <select className="form-select" value={nuevoModeloId} onChange={(e) => setNuevoModeloId(Number(e.target.value))}>
+                  {CATALOGO_MODELOS.map((m) => (
+                    <option key={m.id} value={m.id}>{m.nombre_modelo} ({m.capacidad_caja} pzas)</option>
+                  ))}
+                </select>
+              </div>
+              <div className="form-group">
+                <label className="form-label">COLOR</label>
+                <select className="form-select" value={nuevoColorId} onChange={(e) => setNuevoColorId(Number(e.target.value))}>
+                  {CATALOGO_COLORES.map((c) => (
+                    <option key={c.id} value={c.id}>{c.nombre_color}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="form-group">
+                <label className="form-label">ESTADO</label>
+                <input type="text" readOnly value={cajaActual?.estado || 'Abierta'} className="form-input" />
+              </div>
+              <div style={{ gridColumn: 'span 5', display: 'flex', justifyContent: 'space-between', gap: '0.75rem', marginTop: '0.25rem' }}>
+                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                  <button type="submit" className="btn btn-yellow">
+                    CREAR CAJA
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleCerrar}
+                    disabled={!cajaActual || ocupacion === 0 || cajaActual.estado === 'Cerrada'}
+                    className="btn btn-carbon"
+                  >
+                    CERRAR CAJA E IMPRIMIR ETIQUETA
+                  </button>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setMensaje(null)}
+                  className="btn btn-outline"
+                >
+                  CANCELAR
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+
         {/* SELECTOR DE CAJA ACTIVA Y ESTADO */}
         <div className="panel">
           <div className="panel-header">

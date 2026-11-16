@@ -9,7 +9,12 @@ export default function OrdenesStation() {
   const [idModelo, setIdModelo] = useState(CATALOGO_MODELOS[0].id);
   const [idColor, setIdColor] = useState(CATALOGO_COLORES[0].id);
   const [cantidad, setCantidad] = useState(100);
+  const [fechaInicio, setFechaInicio] = useState('2026-11-16');
   const [fechaCompromiso, setFechaCompromiso] = useState('2026-11-20');
+  const [lineaFormId, setLineaFormId] = useState<number>(CATALOGO_LINEAS[0].id);
+  const [prioridad, setPrioridad] = useState<'Normal' | 'Alta' | 'Urgente'>('Normal');
+  const [observacionesForm, setObservacionesForm] = useState('');
+  const [ordenesCanceladasLocal, setOrdenesCanceladasLocal] = useState<number[]>([]);
   const [busqueda, setBusqueda] = useState('');
   const [filtroEstado, setFiltroEstado] = useState('Todos');
   const [ordenSeleccionadaId, setOrdenSeleccionadaId] = useState<number | null>(ordenes[0]?.id ?? null);
@@ -29,14 +34,15 @@ export default function OrdenesStation() {
       ord.folio.toLowerCase().includes(q) ||
       (ord.modelo_nombre || '').toLowerCase().includes(q) ||
       (ord.cliente_nombre || '').toLowerCase().includes(q);
-    const coincideEstado = filtroEstado === 'Todos' || ord.estado === filtroEstado;
+    const estadoVisible = ordenesCanceladasLocal.includes(ord.id) ? 'Cancelada' : ord.estado;
+    const coincideEstado = filtroEstado === 'Todos' || estadoVisible === filtroEstado;
     return coincideTexto && coincideEstado;
   });
   const ordenSeleccionada = ordenes.find((o) => o.id === ordenSeleccionadaId) || ordenesFiltradas[0] || null;
 
-  const enProceso = ordenes.filter((o) => o.estado === 'En Producción' || o.estado === 'Asignada').length;
-  const terminadas = ordenes.filter((o) => o.estado === 'Completada').length;
-  const pendientes = ordenes.filter((o) => o.estado !== 'En Producción' && o.estado !== 'Asignada' && o.estado !== 'Completada' && o.estado !== 'Cancelada').length;
+  const enProceso = ordenes.filter((o) => !ordenesCanceladasLocal.includes(o.id) && (o.estado === 'En Producción' || o.estado === 'Asignada')).length;
+  const terminadas = ordenes.filter((o) => !ordenesCanceladasLocal.includes(o.id) && o.estado === 'Completada').length;
+  const pendientes = ordenes.filter((o) => !ordenesCanceladasLocal.includes(o.id) && o.estado !== 'En Producción' && o.estado !== 'Asignada' && o.estado !== 'Completada' && o.estado !== 'Cancelada').length;
 
   const limpiarFormulario = () => {
     setFolio('');
@@ -44,7 +50,34 @@ export default function OrdenesStation() {
     setIdModelo(CATALOGO_MODELOS[0].id);
     setIdColor(CATALOGO_COLORES[0].id);
     setCantidad(100);
+    setFechaInicio('2026-11-16');
     setFechaCompromiso('2026-11-20');
+    setLineaFormId(CATALOGO_LINEAS[0].id);
+    setPrioridad('Normal');
+    setObservacionesForm('');
+  };
+
+  const cargarOrdenEnFormulario = () => {
+    if (!ordenSeleccionada) return;
+    setFolio(ordenSeleccionada.folio);
+    setIdCliente(ordenSeleccionada.id_cliente);
+    setIdModelo(ordenSeleccionada.id_modelo);
+    setIdColor(ordenSeleccionada.id_color);
+    setCantidad(ordenSeleccionada.cantidad);
+    setFechaCompromiso(ordenSeleccionada.fecha_compromiso || '2026-11-20');
+    if (ordenSeleccionada.id_linea_asignada) {
+      setLineaFormId(ordenSeleccionada.id_linea_asignada);
+    }
+    folioInputRef.current?.focus();
+    setMensaje({ tipo: 'ok', texto: `Orden ${ordenSeleccionada.folio} cargada en el panel para edición` });
+  };
+
+  const handleCancelarOrden = () => {
+    if (!ordenSeleccionada) return;
+    setOrdenesCanceladasLocal((prev) =>
+      prev.includes(ordenSeleccionada.id) ? prev : [...prev, ordenSeleccionada.id]
+    );
+    setMensaje({ tipo: 'err', texto: `Orden ${ordenSeleccionada.folio} marcada como Cancelada en vista operativa` });
   };
 
   const handleCrear = async (e: React.FormEvent) => {
@@ -223,17 +256,24 @@ export default function OrdenesStation() {
                               {ord.fecha_compromiso || '--'}
                             </td>
                             <td>
-                              <span
-                                className={`badge ${
-                                  ord.estado === 'En Producción'
-                                    ? 'badge-accent'
-                                    : ord.estado === 'Asignada'
-                                    ? 'badge-info'
-                                    : 'badge-dark'
-                                }`}
-                              >
-                                {ord.estado}
-                              </span>
+                              {(() => {
+                                const estadoVisible = ordenesCanceladasLocal.includes(ord.id) ? 'Cancelada' : ord.estado;
+                                return (
+                                  <span
+                                    className={`badge ${
+                                      estadoVisible === 'Cancelada'
+                                        ? 'badge-danger'
+                                        : estadoVisible === 'En Producción'
+                                        ? 'badge-accent'
+                                        : estadoVisible === 'Asignada'
+                                        ? 'badge-info'
+                                        : 'badge-dark'
+                                    }`}
+                                  >
+                                    {estadoVisible}
+                                  </span>
+                                );
+                              })()}
                             </td>
                             <td onClick={(e) => e.stopPropagation()}>
                               <div style={{ display: 'flex', gap: '4px' }}>
@@ -287,15 +327,35 @@ export default function OrdenesStation() {
                 <span>
                   Seleccionada: <strong>{ordenSeleccionada ? ordenSeleccionada.folio : 'Ninguna'}</strong>
                 </span>
-                <button
-                  type="button"
-                  disabled={!ordenSeleccionada}
-                  onClick={() => setModalDetalle(true)}
-                  className="btn btn-outline"
-                  style={{ height: '1.9rem', padding: '0 0.75rem', fontSize: '0.7rem' }}
-                >
-                  VER DETALLE
-                </button>
+                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                  <button
+                    type="button"
+                    disabled={!ordenSeleccionada}
+                    onClick={() => setModalDetalle(true)}
+                    className="btn btn-outline"
+                    style={{ height: '1.9rem', padding: '0 0.75rem', fontSize: '0.7rem' }}
+                  >
+                    VER DETALLE
+                  </button>
+                  <button
+                    type="button"
+                    disabled={!ordenSeleccionada}
+                    onClick={cargarOrdenEnFormulario}
+                    className="btn btn-outline"
+                    style={{ height: '1.9rem', padding: '0 0.75rem', fontSize: '0.7rem' }}
+                  >
+                    EDITAR
+                  </button>
+                  <button
+                    type="button"
+                    disabled={!ordenSeleccionada}
+                    onClick={handleCancelarOrden}
+                    className="btn btn-danger"
+                    style={{ height: '1.9rem', padding: '0 0.75rem', fontSize: '0.7rem' }}
+                  >
+                    CANCELAR ORDEN
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -368,15 +428,102 @@ export default function OrdenesStation() {
                     />
                   </div>
                   <div className="form-group">
-                    <label className="form-label">FECHA COMPROMISO</label>
+                    <label className="form-label">FECHA DE INICIO</label>
                     <input
                       type="date"
-                      required
                       className="form-input"
-                      value={fechaCompromiso}
-                      onChange={(e) => setFechaCompromiso(e.target.value)}
+                      value={fechaInicio}
+                      onChange={(e) => setFechaInicio(e.target.value)}
                     />
                   </div>
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label">FECHA DE ENTREGA (COMPROMISO)</label>
+                  <input
+                    type="date"
+                    required
+                    className="form-input"
+                    value={fechaCompromiso}
+                    onChange={(e) => setFechaCompromiso(e.target.value)}
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label">LÍNEA DE ENSAMBLE</label>
+                  <div style={{ display: 'flex', gap: '1rem', fontSize: '0.8rem', paddingTop: '0.2rem' }}>
+                    {CATALOGO_LINEAS.map((l) => (
+                      <label key={l.id} style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', cursor: 'pointer' }}>
+                        <input
+                          type="radio"
+                          name="linea_ensamble_form"
+                          checked={lineaFormId === l.id}
+                          onChange={() => setLineaFormId(l.id)}
+                        />
+                        Línea {l.nombre_linea}
+                      </label>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label">PRIORIDAD</label>
+                  <div style={{ display: 'flex', gap: '1rem', fontSize: '0.8rem', paddingTop: '0.2rem' }}>
+                    {(['Normal', 'Alta', 'Urgente'] as const).map((p) => (
+                      <label key={p} style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', cursor: 'pointer' }}>
+                        <input
+                          type="radio"
+                          name="prioridad_form"
+                          checked={prioridad === p}
+                          onChange={() => setPrioridad(p)}
+                        />
+                        {p}
+                      </label>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label">MATERIALES REQUERIDOS</label>
+                  <div className="table-container" style={{ border: '1px solid var(--border-default)' }}>
+                    <table className="tech-table" style={{ fontSize: '0.75rem' }}>
+                      <thead>
+                        <tr>
+                          <th>COMPONENTE</th>
+                          <th>POR PZA</th>
+                          <th>TOTAL</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr>
+                          <td>Driver 40mm</td>
+                          <td style={{ fontFamily: 'var(--font-mono)' }}>2</td>
+                          <td style={{ fontFamily: 'var(--font-mono)', fontWeight: 700 }}>{(cantidad || 0) * 2}</td>
+                        </tr>
+                        <tr>
+                          <td>Módulo Bluetooth</td>
+                          <td style={{ fontFamily: 'var(--font-mono)' }}>1</td>
+                          <td style={{ fontFamily: 'var(--font-mono)', fontWeight: 700 }}>{cantidad || 0}</td>
+                        </tr>
+                        <tr>
+                          <td>Batería 2000mAh</td>
+                          <td style={{ fontFamily: 'var(--font-mono)' }}>1</td>
+                          <td style={{ fontFamily: 'var(--font-mono)', fontWeight: 700 }}>{cantidad || 0}</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label">OBSERVACIONES</label>
+                  <textarea
+                    rows={2}
+                    placeholder="Pedido para cliente mayorista..."
+                    className="form-textarea"
+                    value={observacionesForm}
+                    onChange={(e) => setObservacionesForm(e.target.value)}
+                  />
                 </div>
 
                 <div style={{ display: 'flex', gap: '0.75rem', marginTop: '0.5rem' }}>
