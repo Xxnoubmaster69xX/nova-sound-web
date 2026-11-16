@@ -1,4 +1,18 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import {
+  SEED_ORDENES,
+  SEED_CONTEOS_ENSAMBLE,
+  SEED_DEFECTOS_ENSAMBLE,
+  SEED_PRUEBAS_FUNCIONALES,
+  SEED_UNIDADES,
+  SEED_INSPECCIONES_CALIDAD,
+  SEED_HISTORIAL_UNIDADES,
+  SEED_CAJAS,
+  SEED_DETALLES_CAJAS,
+  SEED_EMBARQUES,
+  SEED_CAJAS_ASIGNADAS_EMBARQUE,
+  SEED_BITACORA,
+} from '../data/seedOperacion';
 import type {
   SesionOperativa,
   Usuario,
@@ -25,7 +39,7 @@ import type {
   SolicitudAutorizacion,
   Bitacora,
 } from '../types/database';
-import { RolesEnum, EstadosCalidadEnum } from '../types/database';
+import { RolesEnum } from '../types/database';
 import {
   authApi,
   healthApi,
@@ -288,178 +302,34 @@ export const PlantaProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   };
 
   // 2. ESTADO DE ÓRDENES
-  const [ordenes, setOrdenes] = useState<Orden[]>([
-    {
-      id: 1,
-      folio: 'ORD-2026-101',
-      id_cliente: 1,
-      cliente_nombre: 'SoundCorp Retail',
-      id_modelo: 3,
-      modelo_nombre: 'NS-PRO',
-      id_color: 1,
-      color_nombre: 'Negro',
-      cantidad: 120,
-      fecha_compromiso: '2026-11-10',
-      fecha_recepcion: '2026-11-01',
-      id_usuario_registro: 9,
-      estado: 'En Producción',
-      id_linea_asignada: 1,
-      linea_nombre: 'L1',
-      id_usuario_asigno: 6,
-      fecha_asignacion: '2026-11-02 08:00',
-      piezas_ensambladas: 48,
-      piezas_aprobadas: 42,
-    },
-    {
-      id: 2,
-      folio: 'ORD-2026-102',
-      id_cliente: 2,
-      cliente_nombre: 'MegaAudio Distribución',
-      id_modelo: 2,
-      modelo_nombre: 'NS-SPORT',
-      id_color: 4,
-      color_nombre: 'Azul',
-      cantidad: 80,
-      fecha_compromiso: '2026-11-12',
-      fecha_recepcion: '2026-11-02',
-      id_usuario_registro: 9,
-      estado: 'Asignada',
-      id_linea_asignada: 2,
-      linea_nombre: 'L2',
-      id_usuario_asigno: 6,
-      fecha_asignacion: '2026-11-03 09:30',
-      piezas_ensambladas: 24,
-      piezas_aprobadas: 20,
-    },
-    {
-      id: 3,
-      folio: 'ORD-2026-103',
-      id_cliente: 3,
-      cliente_nombre: 'TechBeat Stores',
-      id_modelo: 1,
-      modelo_nombre: 'NS-MINI',
-      id_color: 2,
-      color_nombre: 'Blanco',
-      cantidad: 240,
-      fecha_compromiso: '2026-11-15',
-      fecha_recepcion: '2026-11-03',
-      id_usuario_registro: 9,
-      estado: 'Pendiente',
-      id_linea_asignada: null,
-      linea_nombre: null,
-      id_usuario_asigno: null,
-      fecha_asignacion: null,
-      piezas_ensambladas: 0,
-      piezas_aprobadas: 0,
-    },
-  ]);
+  const [ordenes, setOrdenes] = useState<Orden[]>(SEED_ORDENES);
 
   // 3. ENSAMBLE & DEFECTOS
-  const [conteosEnsamble, setConteosEnsamble] = useState<ConteoEnsamble[]>([
-    { id: 1, id_orden: 1, id_linea: 1, id_turno: 1, id_operador: 1, cantidad: 28, fecha_hora: '2026-11-04 07:45:00' },
-    { id: 2, id_orden: 1, id_linea: 1, id_turno: 1, id_operador: 1, cantidad: 20, fecha_hora: '2026-11-04 10:15:00' },
-  ]);
+  const [conteosEnsamble, setConteosEnsamble] = useState<ConteoEnsamble[]>(SEED_CONTEOS_ENSAMBLE);
 
-  const [defectosEnsamble, setDefectosEnsamble] = useState<DefectoEnsamble[]>([
-    { id: 1, id_orden: 1, id_linea: 1, id_turno: 1, id_operador: 1, id_defecto: 1, defecto_descripcion: 'Rayón superficial en carcasa plástica', cantidad: 2, observaciones: 'Fricción en tornamesa', fecha_hora: '2026-11-04 08:30:00' },
-  ]);
+  const [defectosEnsamble, setDefectosEnsamble] = useState<DefectoEnsamble[]>(SEED_DEFECTOS_ENSAMBLE);
 
   // 4. PRUEBAS FUNCIONALES (Nacimiento de serie)
-  const [pruebasFuncionales, setPruebasFuncionales] = useState<PruebaFuncional[]>([
-    { id: 1, id_orden: 1, id_linea: 1, id_turno: 1, id_usuario: 1, valida_encendido: true, valida_audio: true, valida_carga: true, valida_bluetooth: true, aprobada: true, numero_serie: 'NS-2026-0001', fecha_hora: '2026-11-04 08:00:15' },
-    { id: 2, id_orden: 1, id_linea: 1, id_turno: 1, id_usuario: 1, valida_encendido: true, valida_audio: true, valida_carga: true, valida_bluetooth: true, aprobada: true, numero_serie: 'NS-2026-0002', fecha_hora: '2026-11-04 08:05:22' },
-    { id: 3, id_orden: 1, id_linea: 1, id_turno: 1, id_usuario: 1, valida_encendido: true, valida_audio: false, valida_carga: true, valida_bluetooth: true, aprobada: false, numero_serie: null, id_defecto_falla: 6, defecto_falla: 'Distorsión de audio o zumbido en altavoz', fecha_hora: '2026-11-04 08:12:00' },
-  ]);
+  const [pruebasFuncionales, setPruebasFuncionales] = useState<PruebaFuncional[]>(SEED_PRUEBAS_FUNCIONALES);
 
   // 5. UNIDADES & CALIDAD
-  const [unidades, setUnidades] = useState<Unidad[]>([
-    { id: 1, id_orden: 1, id_linea: 1, id_turno: 1, numero_serie: 'NS-2026-0001', id_estado_calidad: EstadosCalidadEnum.APROBADA, estado_calidad_nombre: 'Aprobada', id_caja: 1, fecha_ensamble: '2026-11-04 08:00', modelo: 'NS-PRO', color: 'Negro', cliente: 'SoundCorp Retail', id_prueba_funcional: 1 },
-    { id: 2, id_orden: 1, id_linea: 1, id_turno: 1, numero_serie: 'NS-2026-0002', id_estado_calidad: EstadosCalidadEnum.APROBADA, estado_calidad_nombre: 'Aprobada', id_caja: 1, fecha_ensamble: '2026-11-04 08:05', modelo: 'NS-PRO', color: 'Negro', cliente: 'SoundCorp Retail', id_prueba_funcional: 2 },
-    { id: 3, id_orden: 1, id_linea: 1, id_turno: 1, numero_serie: 'NS-2026-0003', id_estado_calidad: EstadosCalidadEnum.EN_RETENCION, estado_calidad_nombre: 'En retención', id_caja: null, fecha_ensamble: '2026-11-04 08:20', modelo: 'NS-PRO', color: 'Negro', cliente: 'SoundCorp Retail', id_prueba_funcional: 4 },
-  ]);
+  const [unidades, setUnidades] = useState<Unidad[]>(SEED_UNIDADES);
 
-  const [inspeccionesCalidad, setInspeccionesCalidad] = useState<InspeccionCalidad[]>([
-    { id: 1, id_unidad: 1, numero_serie: 'NS-2026-0001', id_inspector: 3, inspector_nombre: 'Juan Pérez', id_estado_resultado: 1, estado_resultado_nombre: 'Aprobada', comentarios: 'Inspección cosmética y acústica conforme', fecha_inspeccion: '2026-11-04 08:10' },
-    { id: 2, id_unidad: 2, numero_serie: 'NS-2026-0002', id_inspector: 3, inspector_nombre: 'Juan Pérez', id_estado_resultado: 1, estado_resultado_nombre: 'Aprobada', comentarios: 'Conforme para empaque', fecha_inspeccion: '2026-11-04 08:15' },
-    { id: 3, id_unidad: 3, numero_serie: 'NS-2026-0003', id_inspector: 3, inspector_nombre: 'Juan Pérez', id_estado_resultado: 3, estado_resultado_nombre: 'En retención', id_defecto: 4, defecto_descripcion: 'Golpe o abolladura en rejilla frontal', comentarios: 'Retenida por sospecha de lote golpeado', fecha_inspeccion: '2026-11-04 08:25' },
-  ]);
+  const [inspeccionesCalidad, setInspeccionesCalidad] = useState<InspeccionCalidad[]>(SEED_INSPECCIONES_CALIDAD);
 
-  const [historialUnidades, setHistorialUnidades] = useState<HistorialUnidad[]>([
-    { id: 1, id_unidad: 1, numero_serie: 'NS-2026-0001', id_usuario: 3, usuario_nombre: 'Juan Pérez', estado_anterior: 'Pendiente', estado_nuevo: 'Aprobada', motivo: 'Inspección de calidad aprobada', fecha_hora: '2026-11-04 08:10' },
-    { id: 2, id_unidad: 2, numero_serie: 'NS-2026-0002', id_usuario: 3, usuario_nombre: 'Juan Pérez', estado_anterior: 'Pendiente', estado_nuevo: 'Aprobada', motivo: 'Inspección de calidad aprobada', fecha_hora: '2026-11-04 08:15' },
-    { id: 3, id_unidad: 3, numero_serie: 'NS-2026-0003', id_usuario: 3, usuario_nombre: 'Juan Pérez', estado_anterior: 'Pendiente', estado_nuevo: 'En retención', motivo: 'Rejilla frontal golpeada (Incidente C prevención)', fecha_hora: '2026-11-04 08:25' },
-  ]);
+  const [historialUnidades, setHistorialUnidades] = useState<HistorialUnidad[]>(SEED_HISTORIAL_UNIDADES);
 
   // 6. CAJAS Y DETALLES DE EMPAQUE (P-21..P-25)
-  const [cajas, setCajas] = useState<Caja[]>([
-    {
-      id: 1,
-      codigo_caja: 'BX-2026-001',
-      id_cliente: 1,
-      cliente_nombre: 'SoundCorp Retail',
-      id_modelo: 3,
-      modelo_nombre: 'NS-PRO',
-      id_color: 1,
-      color_nombre: 'Negro',
-      capacidad: 6,
-      piezas_actuales: 2,
-      fecha_creacion: '2026-11-04 08:30:00',
-      fecha_cierre: null,
-      estado: 'Abierta',
-      id_usuario_creador: 4,
-    },
-    {
-      id: 2,
-      codigo_caja: 'BX-2026-002',
-      id_cliente: 1,
-      cliente_nombre: 'SoundCorp Retail',
-      id_modelo: 3,
-      modelo_nombre: 'NS-PRO',
-      id_color: 1,
-      color_nombre: 'Negro',
-      capacidad: 6,
-      piezas_actuales: 6,
-      fecha_creacion: '2026-11-03 14:00:00',
-      fecha_cierre: '2026-11-03 17:30:00',
-      estado: 'Cerrada',
-      id_usuario_creador: 4,
-      id_usuario_cerro: 4,
-      id_embarque_asignado: 1,
-    },
-  ]);
+  const [cajas, setCajas] = useState<Caja[]>(SEED_CAJAS);
 
-  const [detallesCajas, setDetallesCajas] = useState<DetalleCaja[]>([
-    { id: 1, id_caja: 1, id_unidad: 1, numero_serie: 'NS-2026-0001', slot: 1, fecha_empaque: '2026-11-04 08:35', id_usuario_empaco: 4, retirada: false },
-    { id: 2, id_caja: 1, id_unidad: 2, numero_serie: 'NS-2026-0002', slot: 2, fecha_empaque: '2026-11-04 08:36', id_usuario_empaco: 4, retirada: false },
-  ]);
+  const [detallesCajas, setDetallesCajas] = useState<DetalleCaja[]>(SEED_DETALLES_CAJAS);
 
   // 7. EMBARQUES (P-26..P-29)
-  const [embarques, setEmbarques] = useState<Embarque[]>([
-    {
-      id: 1,
-      referencia_embarque: 'EMB-2026-089',
-      id_pedido: 'PED-SC-901',
-      id_cliente: 1,
-      cliente_nombre: 'SoundCorp Retail',
-      id_transportista: 1,
-      transportista_nombre: 'Transportes del Norte S.A.',
-      nombre_chofer: 'Ramiro Valdés',
-      placas_unidad: 'NL-884-TX',
-      fecha_programada: '2026-11-04 15:00',
-      fecha_salida: null,
-      estado: 'Preparación',
-      observaciones: 'Entregar en andén 4 con sello inviolable',
-      id_usuario_creo: 4,
-      id_usuario_confirmo: null,
-      fecha_creacion: '2026-11-04 09:00',
-      total_cajas: 1,
-      total_piezas: 6,
-    },
-  ]);
+  const [embarques, setEmbarques] = useState<Embarque[]>(SEED_EMBARQUES);
 
-  const [cajasAsignadasEmbarque, setCajasAsignadasEmbarque] = useState<Record<number, number[]>>({
-    1: [2],
-  });
+  const [cajasAsignadasEmbarque, setCajasAsignadasEmbarque] = useState<Record<number, number[]>>(
+    SEED_CAJAS_ASIGNADAS_EMBARQUE
+  );
 
   // 8. CIERRES DE TURNO Y GOBERNANZA (P-35, P-43, INC-A, INC-D)
   const [cierresTurno, setCierresTurno] = useState<CierreTurno[]>([
@@ -510,9 +380,7 @@ export const PlantaProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     { id: 3, clave: 'POLITICA_RETENCION_ANOS', valor: 2, tipo_dato: 'INT', descripcion: 'Años mínimos de conservación de trazabilidad e histórico' },
   ]);
 
-  const [bitacora, setBitacora] = useState<Bitacora[]>([
-    { id: 1, fecha: '2026-11-04 06:00:00', id_usuario: 9, usuario_nombre: 'Marcela Juárez', modulo: 'SISTEMA', accion: 'INICIO_SCADA', motivo: 'Apertura de turno de manufactura' },
-  ]);
+  const [bitacora, setBitacora] = useState<Bitacora[]>(SEED_BITACORA);
 
   // Sincronizar sesión con LocalStorage y headers RBAC
   useEffect(() => {
