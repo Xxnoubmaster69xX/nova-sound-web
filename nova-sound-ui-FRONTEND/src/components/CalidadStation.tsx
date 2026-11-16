@@ -123,8 +123,8 @@ export default function CalidadStation() {
           </div>
         </div>
 
-        {/* WORK AREA */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '1.5rem' }}>
+        {/* WORK AREA (FULL-WIDTH TERMINAL + HISTORIAL DEBAJO COMO EN SPEC ORIGINAL) */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
           {/* FORMULARIO DE DICTAMEN */}
           <div className="panel">
             <div className="panel-header">

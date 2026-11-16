@@ -18,6 +18,8 @@ export default function EmpaqueStation() {
     retirarUnidadCaja,
   } = usePlanta();
 
+  const [subvista, setSubvista] = useState<'empacar' | 'consultar' | 'bitacora'>('empacar');
+  const [filtroCaja, setFiltroCaja] = useState<string>('');
   const [cajaSeleccionadaId, setCajaSeleccionadaId] = useState<number>(cajas[0]?.id || 1);
   const [serieInput, setSerieInput] = useState<string>('');
   const [modalNuevaCaja, setModalNuevaCaja] = useState<boolean>(false);
@@ -140,6 +142,184 @@ export default function EmpaqueStation() {
           </div>
         )}
 
+        {/* 3 TARJETAS DE NAVEGACIÓN DE EMPAQUE (SPEC ORIGINAL: CREAR CAJA / CONSULTAR CAJAS / BITÁCORA) */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1rem' }}>
+          <button
+            type="button"
+            onClick={() => setSubvista('empacar')}
+            className={`btn ${subvista === 'empacar' ? 'btn-yellow' : 'btn-outline'}`}
+            style={{ height: '3.2rem', justifyContent: 'space-between', padding: '0 1.25rem' }}
+          >
+            <span>01 · CREAR CAJA / EMPACAR</span>
+            <span className="badge badge-dark">{cajas.filter((c) => c.estado === 'Abierta').length} ABIERTAS</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setSubvista('consultar')}
+            className={`btn ${subvista === 'consultar' ? 'btn-yellow' : 'btn-outline'}`}
+            style={{ height: '3.2rem', justifyContent: 'space-between', padding: '0 1.25rem' }}
+          >
+            <span>02 · CONSULTAR CAJAS</span>
+            <span className="badge badge-dark">{cajas.length} TOTAL</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setSubvista('bitacora')}
+            className={`btn ${subvista === 'bitacora' ? 'btn-yellow' : 'btn-outline'}`}
+            style={{ height: '3.2rem', justifyContent: 'space-between', padding: '0 1.25rem' }}
+          >
+            <span>03 · BITÁCORA</span>
+            <span className="badge badge-dark">{cajas.filter((c) => c.estado === 'Cerrada').length} CERRADAS</span>
+          </button>
+        </div>
+
+        {subvista === 'consultar' && (
+          <div className="panel">
+            <div className="panel-header">
+              <span className="panel-title">CONSULTAR CAJAS REGISTRADAS</span>
+              <input
+                type="text"
+                placeholder="Buscar por folio, cliente o estado..."
+                className="form-input"
+                style={{ width: '260px', height: '2rem', fontSize: '0.8rem' }}
+                value={filtroCaja}
+                onChange={(e) => setFiltroCaja(e.target.value)}
+              />
+            </div>
+            <div className="panel-body" style={{ padding: 0 }}>
+              <div className="table-container">
+                <table className="tech-table">
+                  <thead>
+                    <tr>
+                      <th>FOLIO</th>
+                      <th>CLIENTE</th>
+                      <th>MODELO // COLOR</th>
+                      <th>OCUPACIÓN</th>
+                      <th>ESTADO</th>
+                      <th>ACCIÓN</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {cajas
+                      .filter(
+                        (c) =>
+                          !filtroCaja.trim() ||
+                          c.codigo_caja.toLowerCase().includes(filtroCaja.toLowerCase()) ||
+                          (c.cliente_nombre || '').toLowerCase().includes(filtroCaja.toLowerCase()) ||
+                          c.estado.toLowerCase().includes(filtroCaja.toLowerCase())
+                      )
+                      .map((c) => (
+                        <tr key={c.id}>
+                          <td style={{ fontFamily: 'var(--font-mono)', fontWeight: 700 }}>{c.codigo_caja}</td>
+                          <td>{c.cliente_nombre}</td>
+                          <td>
+                            {c.modelo_nombre} - {c.color_nombre}
+                          </td>
+                          <td style={{ fontFamily: 'var(--font-mono)' }}>
+                            {c.piezas_actuales || 0} / {c.capacidad}
+                          </td>
+                          <td>
+                            <span className={`badge ${c.estado === 'Abierta' ? 'badge-ok' : 'badge-dark'}`}>
+                              {c.estado}
+                            </span>
+                          </td>
+                          <td>
+                            <div style={{ display: 'flex', gap: '0.4rem' }}>
+                              <button
+                                type="button"
+                                className="btn btn-outline"
+                                style={{ height: '1.8rem', padding: '0 0.6rem', fontSize: '0.65rem' }}
+                                onClick={() => {
+                                  setCajaSeleccionadaId(c.id);
+                                  setSubvista('empacar');
+                                }}
+                              >
+                                ABRIR EN BANCO
+                              </button>
+                              {c.estado === 'Cerrada' && (
+                                <button
+                                  type="button"
+                                  className="btn btn-carbon"
+                                  style={{ height: '1.8rem', padding: '0 0.6rem', fontSize: '0.65rem' }}
+                                  onClick={() => {
+                                    setCajaSeleccionadaId(c.id);
+                                    setModalReapertura(true);
+                                  }}
+                                >
+                                  SOLICITAR REAPERTURA
+                                </button>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {subvista === 'bitacora' && (
+          <>
+            <div className="kpi-row">
+              <div className="kpi-card">
+                <span className="kpi-label">CAJAS ABIERTAS</span>
+                <span className="kpi-value">{cajas.filter((c) => c.estado === 'Abierta').length}</span>
+                <span className="kpi-delta" style={{ color: 'var(--ok)' }}>[En proceso de llenado]</span>
+              </div>
+              <div className="kpi-card">
+                <span className="kpi-label">CAJAS CERRADAS</span>
+                <span className="kpi-value">{cajas.filter((c) => c.estado === 'Cerrada').length}</span>
+                <span className="kpi-delta" style={{ color: 'var(--info)' }}>[Selladas y listas]</span>
+              </div>
+              <div className="kpi-card">
+                <span className="kpi-label">PIEZAS EMPACADAS</span>
+                <span className="kpi-value">{detallesCajas.filter((d) => !d.retirada).length}</span>
+                <span className="kpi-delta">[Total en cajas]</span>
+              </div>
+            </div>
+            <div className="panel">
+              <div className="panel-header">
+                <span className="panel-title">BITÁCORA DE CAJAS Y MOVIMIENTOS</span>
+                <span className="badge badge-accent">HISTORIAL</span>
+              </div>
+              <div className="panel-body" style={{ padding: 0 }}>
+                <div className="table-container">
+                  <table className="tech-table">
+                    <thead>
+                      <tr>
+                        <th>FOLIO</th>
+                        <th>CLIENTE</th>
+                        <th>MODELO // COLOR</th>
+                        <th>PIEZAS</th>
+                        <th>ESTADO</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {cajas.map((c) => (
+                        <tr key={c.id}>
+                          <td style={{ fontFamily: 'var(--font-mono)', fontWeight: 700 }}>{c.codigo_caja}</td>
+                          <td>{c.cliente_nombre}</td>
+                          <td>{c.modelo_nombre} - {c.color_nombre}</td>
+                          <td style={{ fontFamily: 'var(--font-mono)' }}>{c.piezas_actuales || 0} / {c.capacidad}</td>
+                          <td>
+                            <span className={`badge ${c.estado === 'Abierta' ? 'badge-ok' : 'badge-dark'}`}>
+                              {c.estado}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </>
+        )}
+
+        {subvista === 'empacar' && (
+        <>
         {/* SELECTOR DE CAJA ACTIVA Y ESTADO */}
         <div className="panel">
           <div className="panel-header">
@@ -346,6 +526,8 @@ export default function EmpaqueStation() {
             </div>
           </div>
         </div>
+        </>
+        )}
       </div>
 
       {/* MODAL: APERTURA DE NUEVA CAJA */}

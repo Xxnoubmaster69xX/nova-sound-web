@@ -73,92 +73,7 @@ export default function OrdenesStation() {
           </div>
         )}
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '1.5rem' }}>
-          {/* FORMULARIO DE CAPTURA MANUAL */}
-          <div className="panel">
-            <div className="panel-header">
-              <span className="panel-title">ALTA DE NUEVA ORDEN</span>
-              <span className="badge badge-accent">MANUAL_ENTRY</span>
-            </div>
-            <div className="panel-body">
-              <form onSubmit={handleCrear} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                <div className="form-group">
-                  <label className="form-label">FOLIO DE LA ORDEN</label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="Ej. ORD-2026-105"
-                    className="form-input"
-                    value={folio}
-                    onChange={(e) => setFolio(e.target.value.toUpperCase())}
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label className="form-label">CLIENTE DESTINO</label>
-                  <select className="form-select" value={idCliente} onChange={(e) => setIdCliente(Number(e.target.value))}>
-                    {CATALOGO_CLIENTES.map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {c.nombre_cliente} ({c.tipo_cliente})
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
-                  <div className="form-group">
-                    <label className="form-label">MODELO</label>
-                    <select className="form-select" value={idModelo} onChange={(e) => setIdModelo(Number(e.target.value))}>
-                      {CATALOGO_MODELOS.map((m) => (
-                        <option key={m.id} value={m.id}>
-                          {m.nombre_modelo} ({m.capacidad_caja}/caja)
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <div className="form-group">
-                    <label className="form-label">COLOR</label>
-                    <select className="form-select" value={idColor} onChange={(e) => setIdColor(Number(e.target.value))}>
-                      {CATALOGO_COLORES.map((c) => (
-                        <option key={c.id} value={c.id}>
-                          {c.nombre_color}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
-                  <div className="form-group">
-                    <label className="form-label">CANTIDAD (PIEZAS)</label>
-                    <input
-                      type="number"
-                      required
-                      min={1}
-                      className="form-input"
-                      value={cantidad}
-                      onChange={(e) => setCantidad(Number(e.target.value))}
-                    />
-                  </div>
-                  <div className="form-group">
-                    <label className="form-label">FECHA COMPROMISO</label>
-                    <input
-                      type="date"
-                      required
-                      className="form-input"
-                      value={fechaCompromiso}
-                      onChange={(e) => setFechaCompromiso(e.target.value)}
-                    />
-                  </div>
-                </div>
-
-                <button type="submit" className="btn btn-yellow" style={{ marginTop: '0.5rem' }}>
-                  REGISTRAR ORDEN
-                </button>
-              </form>
-            </div>
-          </div>
-
+        <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '1.5rem', alignItems: 'start' }}>
           {/* LISTA DE ÓRDENES Y ASIGNACIÓN A LÍNEAS */}
           <div className="panel">
             <div className="panel-header">
@@ -246,6 +161,91 @@ export default function OrdenesStation() {
                   </tbody>
                 </table>
               </div>
+            </div>
+          </div>
+
+          {/* FORMULARIO DE CAPTURA MANUAL */}
+          <div className="panel">
+            <div className="panel-header">
+              <span className="panel-title">ALTA DE NUEVA ORDEN</span>
+              <span className="badge badge-accent">MANUAL_ENTRY</span>
+            </div>
+            <div className="panel-body">
+              <form onSubmit={handleCrear} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                <div className="form-group">
+                  <label className="form-label">FOLIO DE LA ORDEN</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="Ej. ORD-2026-105"
+                    className="form-input"
+                    value={folio}
+                    onChange={(e) => setFolio(e.target.value.toUpperCase())}
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label">CLIENTE DESTINO</label>
+                  <select className="form-select" value={idCliente} onChange={(e) => setIdCliente(Number(e.target.value))}>
+                    {CATALOGO_CLIENTES.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.nombre_cliente} ({c.tipo_cliente})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+                  <div className="form-group">
+                    <label className="form-label">MODELO</label>
+                    <select className="form-select" value={idModelo} onChange={(e) => setIdModelo(Number(e.target.value))}>
+                      {CATALOGO_MODELOS.map((m) => (
+                        <option key={m.id} value={m.id}>
+                          {m.nombre_modelo} ({m.capacidad_caja}/caja)
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">COLOR</label>
+                    <select className="form-select" value={idColor} onChange={(e) => setIdColor(Number(e.target.value))}>
+                      {CATALOGO_COLORES.map((c) => (
+                        <option key={c.id} value={c.id}>
+                          {c.nombre_color}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+                  <div className="form-group">
+                    <label className="form-label">CANTIDAD (PIEZAS)</label>
+                    <input
+                      type="number"
+                      required
+                      min={1}
+                      className="form-input"
+                      value={cantidad}
+                      onChange={(e) => setCantidad(Number(e.target.value))}
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">FECHA COMPROMISO</label>
+                    <input
+                      type="date"
+                      required
+                      className="form-input"
+                      value={fechaCompromiso}
+                      onChange={(e) => setFechaCompromiso(e.target.value)}
+                    />
+                  </div>
+                </div>
+
+                <button type="submit" className="btn btn-yellow" style={{ marginTop: '0.5rem' }}>
+                  REGISTRAR ORDEN
+                </button>
+              </form>
             </div>
           </div>
         </div>

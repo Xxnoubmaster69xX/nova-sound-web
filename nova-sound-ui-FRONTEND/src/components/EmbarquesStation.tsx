@@ -123,6 +123,105 @@ export default function EmbarquesStation() {
           </div>
         )}
 
+        {/* KPIs SUPERIORES DE EMBARQUE (SPEC ORIGINAL) */}
+        <div className="kpi-row">
+          <div className="kpi-card">
+            <span className="kpi-label">EN PREPARACIÓN</span>
+            <span className="kpi-value">
+              {embarques.filter((e) => e.estado !== 'Despachado' && (cajasAsignadasEmbarque[e.id]?.length || 0) === 0).length}
+            </span>
+            <span className="kpi-delta">[Sin cajas asignadas]</span>
+          </div>
+          <div className="kpi-card">
+            <span className="kpi-label">LISTOS PARA SALIR</span>
+            <span className="kpi-value" style={{ color: 'var(--info)' }}>
+              {embarques.filter((e) => e.estado !== 'Despachado' && (cajasAsignadasEmbarque[e.id]?.length || 0) > 0).length}
+            </span>
+            <span className="kpi-delta" style={{ color: 'var(--info)' }}>[Con manifiesto]</span>
+          </div>
+          <div className="kpi-card">
+            <span className="kpi-label">EMBARCADOS</span>
+            <span className="kpi-value" style={{ color: 'var(--ok)' }}>
+              {embarques.filter((e) => e.estado === 'Despachado').length}
+            </span>
+            <span className="kpi-delta" style={{ color: 'var(--ok)' }}>[Salida confirmada]</span>
+          </div>
+          <div className="kpi-card">
+            <span className="kpi-label">CAJAS CERRADAS SIN EMBARQUE</span>
+            <span className="kpi-value">
+              {cajas.filter((c) => c.estado === 'Cerrada' && !c.id_embarque_asignado).length}
+            </span>
+            <span className="kpi-delta">[Disponibles en almacén]</span>
+          </div>
+        </div>
+
+        {/* TABLA RESUMEN DE EMBARQUES (SPEC ORIGINAL) */}
+        <div className="panel">
+          <div className="panel-header">
+            <span className="panel-title">EMBARQUES PROGRAMADOS ({embarques.length})</span>
+            <span className="badge badge-accent">DESPACHO_LOG</span>
+          </div>
+          <div className="panel-body" style={{ padding: 0 }}>
+            <div className="table-container">
+              <table className="tech-table">
+                <thead>
+                  <tr>
+                    <th>REFERENCIA</th>
+                    <th>PEDIDO</th>
+                    <th>CLIENTE</th>
+                    <th>TRANSPORTISTA</th>
+                    <th>PROGRAMADA</th>
+                    <th>CONTENIDO</th>
+                    <th>ESTADO</th>
+                    <th>ACCIONES</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {embarques.map((e) => {
+                    const countCajas = (cajasAsignadasEmbarque[e.id] || []).length;
+                    const seleccionado = e.id === embarqueSeleccionadoId;
+                    return (
+                      <tr
+                        key={e.id}
+                        style={{
+                          background: seleccionado ? 'rgba(255, 250, 0, 0.08)' : undefined,
+                          cursor: 'pointer',
+                        }}
+                        onClick={() => setEmbarqueSeleccionadoId(e.id)}
+                      >
+                        <td style={{ fontFamily: 'var(--font-mono)', fontWeight: 700 }}>{e.referencia_embarque}</td>
+                        <td style={{ fontFamily: 'var(--font-mono)' }}>{e.id_pedido}</td>
+                        <td>{e.cliente_nombre}</td>
+                        <td>{e.transportista_nombre}</td>
+                        <td style={{ fontFamily: 'var(--font-mono)' }}>{e.fecha_programada}</td>
+                        <td>{countCajas} Cajas</td>
+                        <td>
+                          <span className={`badge ${e.estado === 'Despachado' ? 'badge-ok' : 'badge-info'}`}>
+                            {e.estado}
+                          </span>
+                        </td>
+                        <td>
+                          <button
+                            type="button"
+                            className={`btn ${seleccionado ? 'btn-yellow' : 'btn-outline'}`}
+                            style={{ height: '1.8rem', padding: '0 0.6rem', fontSize: '0.65rem' }}
+                            onClick={(ev) => {
+                              ev.stopPropagation();
+                              setEmbarqueSeleccionadoId(e.id);
+                            }}
+                          >
+                            {seleccionado ? 'SELECCIONADO' : 'VER DETALLE'}
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
         {/* SELECTOR DE EMBARQUE */}
         <div className="panel">
           <div className="panel-header">

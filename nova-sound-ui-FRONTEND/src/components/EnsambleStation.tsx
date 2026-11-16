@@ -136,160 +136,163 @@ export default function EnsambleStation() {
           </div>
         </div>
 
-        {/* WORK AREA: CONTEO & DEFECTOS */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
-          {/* REGISTRO DE CONTEO */}
+        {/* WORK AREA: TABLA IZQ (PDF ORIGINAL) + REGISTRO DER */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr', gap: '1.5rem', alignItems: 'start' }}>
+          {/* TABLA DE ÚLTIMOS CONTEOS */}
           <div className="panel">
             <div className="panel-header">
-              <span className="panel-title">REGISTRO DE PIEZAS ENSAMBLADAS (P-11, F-03)</span>
-              <span className="badge badge-accent">BATCH_COUNT</span>
+              <span className="panel-title">BITÁCORA DE CONTEOS REGISTRADOS EN TURNO</span>
+              <span className="badge badge-accent">REAL_TIME</span>
             </div>
-            <div className="panel-body">
-              <form onSubmit={handleRegistrarConteo} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-                <div className="form-group">
-                  <label className="form-label">SELECCIONAR ORDEN ACTIVA EN LÍNEA</label>
-                  <select
-                    className="form-select"
-                    value={ordenSeleccionadaId}
-                    onChange={(e) => setOrdenSeleccionadaId(Number(e.target.value))}
-                  >
-                    {ordenes.map((ord) => (
-                      <option key={ord.id} value={ord.id}>
-                        {ord.folio} - {ord.modelo_nombre} ({ord.color_nombre}) [{ord.cliente_nombre}] {ord.id_linea_asignada ? `(L${ord.id_linea_asignada})` : '(Sin línea)'}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+            <div className="panel-body" style={{ padding: 0 }}>
+              <div className="table-container">
+                <table className="tech-table">
+                  <thead>
+                    <tr>
+                      <th>HORA REGISTRO</th>
+                      <th>ORDEN</th>
+                      <th>LÍNEA // TURNO</th>
+                      <th>OPERADOR</th>
+                      <th>CANTIDAD</th>
+                      <th>DESTINO SIGUIENTE</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {conteosEnsamble.map((c) => {
+                      const ord = ordenes.find((o) => o.id === c.id_orden);
+                      return (
+                        <tr key={c.id}>
+                          <td style={{ fontFamily: 'var(--font-mono)' }}>{c.fecha_hora}</td>
+                          <td style={{ fontWeight: 700, color: 'var(--carbon-900)' }}>{ord?.folio}</td>
+                          <td>
+                            Línea {c.id_linea} / Turno {c.id_turno}
+                          </td>
+                          <td>{sesion.usuario.nombre_completo}</td>
+                          <td style={{ fontFamily: 'var(--font-mono)', fontWeight: 800 }}>+{c.cantidad} piezas</td>
+                          <td>
+                            <span className="badge badge-info">PASA A PRUEBA FUNCIONAL</span>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
 
-                <div className="form-group">
-                  <label className="form-label">CANTIDAD DE PIEZAS ENSAMBLADAS</label>
-                  <input
-                    type="number"
-                    min={1}
-                    required
-                    className="form-input"
-                    value={cantidadPiezas}
-                    onChange={(e) => setCantidadPiezas(Number(e.target.value))}
-                  />
-                  <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>
-                    * En ensamble se cuenta por lotes. El número de serie nace oficialmente al aprobar Prueba Funcional.
-                  </span>
-                </div>
-
-                <div style={{ display: 'flex', gap: '0.5rem' }}>
-                  {[1, 5, 10, 20].map((num) => (
-                    <button
-                      key={num}
-                      type="button"
-                      onClick={() => setCantidadPiezas(num)}
-                      className="btn btn-dark"
-                      style={{ height: '2rem', flex: 1, fontSize: '0.7rem' }}
+          {/* COLUMNA DERECHA: REGISTRO DE CONTEO Y DEFECTOS */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+            {/* REGISTRO DE CONTEO */}
+            <div className="panel">
+              <div className="panel-header">
+                <span className="panel-title">REGISTRO DE PIEZAS ENSAMBLADAS (P-11, F-03)</span>
+                <span className="badge badge-accent">BATCH_COUNT</span>
+              </div>
+              <div className="panel-body">
+                <form onSubmit={handleRegistrarConteo} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                  <div className="form-group">
+                    <label className="form-label">SELECCIONAR ORDEN ACTIVA EN LÍNEA</label>
+                    <select
+                      className="form-select"
+                      value={ordenSeleccionadaId}
+                      onChange={(e) => setOrdenSeleccionadaId(Number(e.target.value))}
                     >
-                      +{num}
-                    </button>
-                  ))}
-                </div>
+                      {ordenes.map((ord) => (
+                        <option key={ord.id} value={ord.id}>
+                          {ord.folio} - {ord.modelo_nombre} ({ord.color_nombre}) [{ord.cliente_nombre}] {ord.id_linea_asignada ? `(L${ord.id_linea_asignada})` : '(Sin línea)'}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
 
-                <button type="submit" className="btn btn-yellow" style={{ height: '3rem', fontSize: '0.9rem' }}>
-                  REGISTRAR CONTEO DE ENSAMBLE
-                </button>
-              </form>
-            </div>
-          </div>
+                  <div className="form-group">
+                    <label className="form-label">CANTIDAD DE PIEZAS ENSAMBLADAS</label>
+                    <input
+                      type="number"
+                      min={1}
+                      required
+                      className="form-input"
+                      value={cantidadPiezas}
+                      onChange={(e) => setCantidadPiezas(Number(e.target.value))}
+                    />
+                    <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>
+                      * En ensamble se cuenta por lotes. El número de serie nace oficialmente al aprobar Prueba Funcional.
+                    </span>
+                  </div>
 
-          {/* REGISTRO DE DEFECTOS DE ENSAMBLE */}
-          <div className="panel">
-            <div className="panel-header">
-              <span className="panel-title">REGISTRO DE INCIDENCIA / DEFECTO DE LÍNEA (P-14)</span>
-              <span className="badge badge-warn">SCRAP_LOG</span>
-            </div>
-            <div className="panel-body">
-              <form onSubmit={handleRegistrarDefecto} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                <div className="form-group">
-                  <label className="form-label">CATÁLOGO DE DEFECTO OFICIAL</label>
-                  <select
-                    className="form-select"
-                    value={defectoId}
-                    onChange={(e) => setDefectoId(Number(e.target.value))}
-                  >
-                    {CATALOGO_DEFECTOS_OFICIALES.filter((d) => d.categoria === 'Apariencia' || d.categoria === 'Ensamble' || d.categoria === 'Funcional').map((d) => (
-                      <option key={d.id} value={d.id}>
-                        [{d.categoria.toUpperCase()}] {d.descripcion} ({d.severidad})
-                      </option>
+                  <div style={{ display: 'flex', gap: '0.5rem' }}>
+                    {[1, 5, 10, 20].map((num) => (
+                      <button
+                        key={num}
+                        type="button"
+                        onClick={() => setCantidadPiezas(num)}
+                        className="btn btn-dark"
+                        style={{ height: '2rem', flex: 1, fontSize: '0.7rem' }}
+                      >
+                        +{num}
+                      </button>
                     ))}
-                  </select>
-                </div>
+                  </div>
 
-                <div className="form-group">
-                  <label className="form-label">CANTIDAD AFECTADA</label>
-                  <input
-                    type="number"
-                    min={1}
-                    required
-                    className="form-input"
-                    value={cantidadDefectos}
-                    onChange={(e) => setCantidadDefectos(Number(e.target.value))}
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label className="form-label">OBSERVACIONES O CAUSA RAÍZ</label>
-                  <input
-                    type="text"
-                    placeholder="Ej. Problema de torque en tornillo o rebaba en tapa"
-                    className="form-input"
-                    value={obsDefecto}
-                    onChange={(e) => setObsDefecto(e.target.value)}
-                  />
-                </div>
-
-                <button type="submit" className="btn btn-danger" style={{ marginTop: '0.5rem' }}>
-                  REGISTRAR INCIDENCIA DE ENSAMBLE
-                </button>
-              </form>
+                  <button type="submit" className="btn btn-yellow" style={{ height: '3rem', fontSize: '0.9rem' }}>
+                    REGISTRAR CONTEO DE ENSAMBLE
+                  </button>
+                </form>
+              </div>
             </div>
-          </div>
-        </div>
 
-        {/* TABLA DE ÚLTIMOS CONTEOS */}
-        <div className="panel">
-          <div className="panel-header">
-            <span className="panel-title">BITÁCORA DE CONTEOS REGISTRADOS EN TURNO</span>
-            <span className="badge badge-accent">REAL_TIME</span>
-          </div>
-          <div className="panel-body" style={{ padding: 0 }}>
-            <div className="table-container">
-              <table className="tech-table">
-                <thead>
-                  <tr>
-                    <th>HORA REGISTRO</th>
-                    <th>ORDEN</th>
-                    <th>LÍNEA // TURNO</th>
-                    <th>OPERADOR</th>
-                    <th>CANTIDAD</th>
-                    <th>DESTINO SIGUIENTE</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {conteosEnsamble.map((c) => {
-                    const ord = ordenes.find((o) => o.id === c.id_orden);
-                    return (
-                      <tr key={c.id}>
-                        <td style={{ fontFamily: 'var(--font-mono)' }}>{c.fecha_hora}</td>
-                        <td style={{ fontWeight: 700, color: 'var(--carbon-900)' }}>{ord?.folio}</td>
-                        <td>
-                          Línea {c.id_linea} / Turno {c.id_turno}
-                        </td>
-                        <td>{sesion.usuario.nombre_completo}</td>
-                        <td style={{ fontFamily: 'var(--font-mono)', fontWeight: 800 }}>+{c.cantidad} piezas</td>
-                        <td>
-                          <span className="badge badge-info">PASA A PRUEBA FUNCIONAL</span>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+            {/* REGISTRO DE DEFECTOS DE ENSAMBLE */}
+            <div className="panel">
+              <div className="panel-header">
+                <span className="panel-title">REGISTRO DE INCIDENCIA / DEFECTO DE LÍNEA (P-14)</span>
+                <span className="badge badge-warn">SCRAP_LOG</span>
+              </div>
+              <div className="panel-body">
+                <form onSubmit={handleRegistrarDefecto} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                  <div className="form-group">
+                    <label className="form-label">CATÁLOGO DE DEFECTO OFICIAL</label>
+                    <select
+                      className="form-select"
+                      value={defectoId}
+                      onChange={(e) => setDefectoId(Number(e.target.value))}
+                    >
+                      {CATALOGO_DEFECTOS_OFICIALES.filter((d) => d.categoria === 'Apariencia' || d.categoria === 'Ensamble' || d.categoria === 'Funcional').map((d) => (
+                        <option key={d.id} value={d.id}>
+                          [{d.categoria.toUpperCase()}] {d.descripcion} ({d.severidad})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="form-group">
+                    <label className="form-label">CANTIDAD AFECTADA</label>
+                    <input
+                      type="number"
+                      min={1}
+                      required
+                      className="form-input"
+                      value={cantidadDefectos}
+                      onChange={(e) => setCantidadDefectos(Number(e.target.value))}
+                    />
+                  </div>
+
+                  <div className="form-group">
+                    <label className="form-label">OBSERVACIONES O CAUSA RAÍZ</label>
+                    <input
+                      type="text"
+                      placeholder="Ej. Problema de torque en tornillo o rebaba en tapa"
+                      className="form-input"
+                      value={obsDefecto}
+                      onChange={(e) => setObsDefecto(e.target.value)}
+                    />
+                  </div>
+
+                  <button type="submit" className="btn btn-danger" style={{ marginTop: '0.5rem' }}>
+                    REGISTRAR INCIDENCIA DE ENSAMBLE
+                  </button>
+                </form>
+              </div>
             </div>
           </div>
         </div>
