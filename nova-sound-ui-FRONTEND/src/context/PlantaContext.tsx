@@ -279,7 +279,7 @@ export const PlantaProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const [backendOnline, setBackendOnline] = useState<boolean>(false);
   const [modoMantenimiento, setModoMantenimientoState] = useState<boolean>(false);
   const [mensajeMantenimiento, setMensajeMantenimiento] = useState<string>('Operación estándar de planta activa');
-  const [vistaActual, setVistaActual] = useState<string>('inicio');
+  const [vistaActual, setVistaActual] = useState<string>('ordenes');
   const [serieTrazabilidad, setSerieTrazabilidad] = useState<string | null>(null);
 
   const abrirTrazabilidad = (numeroSerie: string) => {

@@ -6,7 +6,6 @@ import Topbar from '../components/Topbar';
 import type { MenuItem } from '../components/Topbar';
 import Sidebar from '../components/Sidebar';
 
-import Inicio from './Areas/Inicio';
 import Ordenes from './Areas/Ordenes';
 import Ensamble from './Areas/Ensamble';
 import Pruebas from './Areas/Pruebas';
@@ -14,8 +13,6 @@ import Calidad from './Areas/Calidad';
 import Empaque from './Areas/Empaque';
 import Embarques from './Areas/Embarques';
 import Trazabilidad from './Areas/Trazabilidad';
-import Turnos from './Areas/Turnos';
-import Reportes from './Areas/Reportes';
 import Configuracion from './Areas/Configuracion';
 
 export default function Main() {
@@ -44,16 +41,8 @@ export default function Main() {
   const cajasListasEmbarque = cajas.filter((c) => c.estado === 'Cerrada' && !c.id_embarque_asignado).length;
   const autorizacionesPendientes = solicitudesAutorizacion.filter((s) => s.estado === 'PENDIENTE').length;
 
-  // Menú táctico industrial completo con las 11 estaciones (P-40..P-43 y flujo de caso)
+  // Menú alineado estrictamente con las ventanas prometidas en Avances de ventanas para Nova Sound.pdf
   const menuItems: MenuItem[] = [
-    {
-      id: 'inicio',
-      code: '00',
-      label: 'Inicio',
-      iconName: 'dashboard',
-      roles: [1, 2, 3, 4, 5, 6, 7, 8, 9],
-      component: <Inicio />,
-    },
     {
       id: 'ordenes',
       code: '01',
@@ -110,40 +99,22 @@ export default function Main() {
     {
       id: 'trazabilidad',
       code: '360',
-      label: 'Trazabilidad 360°',
+      label: 'Búsqueda Serie / 360°',
       iconName: 'qr_code_scanner',
       roles: [1, 2, 3, 4, 5, 6, 7, 8, 9],
       component: <Trazabilidad />,
     },
     {
-      id: 'turnos',
-      code: '07',
-      label: 'Cierre de Turno',
-      iconName: 'schedule',
-      roles: [RolesEnum.LIDER_LINEA, RolesEnum.SUPERVISOR_ALMACEN, RolesEnum.SUBGERENTE_PRODUCCION, RolesEnum.GERENTE_PRODUCCION, RolesEnum.GERENTE_PLANTA, RolesEnum.ADMINISTRADOR],
-      badge: autorizacionesPendientes,
-      badgeAlert: autorizacionesPendientes > 0,
-      component: <Turnos />,
-    },
-    {
-      id: 'reportes',
-      code: '08',
-      label: 'Reportes',
-      iconName: 'analytics',
-      roles: [RolesEnum.LIDER_LINEA, RolesEnum.SUBGERENTE_PRODUCCION, RolesEnum.GERENTE_PRODUCCION, RolesEnum.GERENTE_PLANTA, RolesEnum.ADMINISTRADOR],
-      component: <Reportes />,
-    },
-    {
       id: 'config',
       code: 'SYS',
-      label: 'Configuración',
+      label: 'Sistema',
       iconName: 'settings',
       roles: [RolesEnum.ADMINISTRADOR],
       component: <Configuracion />,
     },
   ];
 
-  const [openTabIds, setOpenTabIds] = useState<string[]>(['inicio']);
+  const [openTabIds, setOpenTabIds] = useState<string[]>(['ordenes']);
 
   // Si se navega a una estación desde un acceso directo (ej. VER 360°), abrir su pestaña automáticamente
   useEffect(() => {
@@ -220,7 +191,7 @@ export default function Main() {
             </svg>
           </div>
           <div style={{ position: 'relative', zIndex: 2 }}>
-            {menuItems.find((i) => i.id === vistaActual)?.component || <Inicio />}
+            {itemsPermitidos.find((i) => i.id === vistaActual)?.component || itemsPermitidos[0]?.component}
           </div>
         </main>
       </div>
