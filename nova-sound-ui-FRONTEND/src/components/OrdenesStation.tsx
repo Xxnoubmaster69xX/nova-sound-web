@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { usePlanta, CATALOGO_CLIENTES, CATALOGO_MODELOS, CATALOGO_COLORES, CATALOGO_LINEAS } from '../context/PlantaContext';
 
 export default function OrdenesStation() {
@@ -10,11 +10,42 @@ export default function OrdenesStation() {
   const [idColor, setIdColor] = useState(CATALOGO_COLORES[0].id);
   const [cantidad, setCantidad] = useState(100);
   const [fechaCompromiso, setFechaCompromiso] = useState('2026-11-20');
+  const [busqueda, setBusqueda] = useState('');
+  const [filtroEstado, setFiltroEstado] = useState('Todos');
+  const [ordenSeleccionadaId, setOrdenSeleccionadaId] = useState<number | null>(ordenes[0]?.id ?? null);
+  const [modalDetalle, setModalDetalle] = useState(false);
   const [modalImportar, setModalImportar] = useState(false);
+  const folioInputRef = useRef<HTMLInputElement>(null);
   const [textoCsv, setTextoCsv] = useState(
     'folio,modelo,color,cliente,cantidad,compromiso\nORD-2026-201,NS-PRO,Negro,SoundCorp Retail,120,2026-11-25\nORD-2026-202,NS-SPORT,Azul,MegaAudio Distribución,80,2026-11-28\nORD-2026-203,NS-MINI,Blanco,TechBeat Stores,200,2026-11-30'
   );
   const [mensaje, setMensaje] = useState<{ tipo: 'ok' | 'err'; texto: string } | null>(null);
+
+  const estadosDisponibles = Array.from(new Set(ordenes.map((o) => o.estado)));
+  const ordenesFiltradas = ordenes.filter((ord) => {
+    const q = busqueda.trim().toLowerCase();
+    const coincideTexto =
+      !q ||
+      ord.folio.toLowerCase().includes(q) ||
+      (ord.modelo_nombre || '').toLowerCase().includes(q) ||
+      (ord.cliente_nombre || '').toLowerCase().includes(q);
+    const coincideEstado = filtroEstado === 'Todos' || ord.estado === filtroEstado;
+    return coincideTexto && coincideEstado;
+  });
+  const ordenSeleccionada = ordenes.find((o) => o.id === ordenSeleccionadaId) || ordenesFiltradas[0] || null;
+
+  const enProceso = ordenes.filter((o) => o.estado === 'En Producción' || o.estado === 'Asignada').length;
+  const terminadas = ordenes.filter((o) => o.estado === 'Completada').length;
+  const pendientes = ordenes.filter((o) => o.estado !== 'En Producción' && o.estado !== 'Asignada' && o.estado !== 'Completada' && o.estado !== 'Cancelada').length;
+
+  const limpiarFormulario = () => {
+    setFolio('');
+    setIdCliente(CATALOGO_CLIENTES[0].id);
+    setIdModelo(CATALOGO_MODELOS[0].id);
+    setIdColor(CATALOGO_COLORES[0].id);
+    setCantidad(100);
+    setFechaCompromiso('2026-11-20');
+  };
 
   const handleCrear = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -77,8 +108,65 @@ export default function OrdenesStation() {
           {/* LISTA DE ÓRDENES Y ASIGNACIÓN A LÍNEAS */}
           <div className="panel">
             <div className="panel-header">
-              <span className="panel-title">ÓRDENES ACTIVAS EN PLANTA ({ordenes.length})</span>
-              <span className="badge badge-info">EN_SEGUIMIENTO</span>
+              <span className="panel-title">ÓRDENES DE PRODUCCIÓN ({ordenesFiltradas.length})</span>
+              <span className="badge badge-info">
+                {enProceso} EN PROCESO · {pendientes} PENDIENTES · {terminadas} TERMINADAS
+              </span>
+            </div>
+            {/* BARRA DE BÚSQUEDA Y FILTROS (SPEC ORIGINAL) */}
+            <div
+              style={{
+                display: 'flex',
+                gap: '0.75rem',
+                alignItems: 'center',
+                padding: '0.75rem 1rem',
+                borderBottom: '1px solid var(--border-default)',
+                background: 'var(--bg-surface-elevated)',
+                flexWrap: 'wrap',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flex: 1, minWidth: '180px' }}>
+                <label className="form-label" style={{ margin: 0, whiteSpace: 'nowrap' }}>
+                  BUSCAR:
+                </label>
+                <input
+                  type="text"
+                  placeholder="Folio o modelo..."
+                  className="form-input"
+                  style={{ height: '2rem', fontSize: '0.8rem' }}
+                  value={busqueda}
+                  onChange={(e) => setBusqueda(e.target.value)}
+                />
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <label className="form-label" style={{ margin: 0, whiteSpace: 'nowrap' }}>
+                  ESTADO:
+                </label>
+                <select
+                  className="form-select"
+                  style={{ height: '2rem', fontSize: '0.8rem', minWidth: '140px' }}
+                  value={filtroEstado}
+                  onChange={(e) => setFiltroEstado(e.target.value)}
+                >
+                  <option value="Todos">Todos</option>
+                  {estadosDisponibles.map((est) => (
+                    <option key={est} value={est}>
+                      {est}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <button
+                type="button"
+                className="btn btn-yellow"
+                style={{ height: '2rem', padding: '0 0.85rem', fontSize: '0.75rem' }}
+                onClick={() => {
+                  limpiarFormulario();
+                  folioInputRef.current?.focus();
+                }}
+              >
+                + NUEVA ORDEN
+              </button>
             </div>
             <div className="panel-body" style={{ padding: 0 }}>
               <div className="table-container">
@@ -89,77 +177,125 @@ export default function OrdenesStation() {
                       <th>CLIENTE</th>
                       <th>MODELO // COLOR</th>
                       <th>CANTIDAD</th>
-                      <th>LÍNEA ASIGNADA</th>
+                      <th>LÍNEA</th>
+                      <th>ENTREGA</th>
                       <th>ESTADO</th>
                       <th>ACCIÓN</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {ordenes.map((ord) => (
-                      <tr key={ord.id}>
-                        <td style={{ fontFamily: 'var(--font-mono)', fontWeight: 700, color: 'var(--carbon-900)' }}>
-                          {ord.folio}
-                        </td>
-                        <td>{ord.cliente_nombre}</td>
-                        <td>
-                          <span style={{ fontWeight: 700 }}>{ord.modelo_nombre}</span> - {ord.color_nombre}
-                        </td>
-                        <td style={{ fontFamily: 'var(--font-mono)' }}>
-                          {ord.piezas_ensambladas || 0} / {ord.cantidad} pzas
-                        </td>
-                        <td>
-                          {ord.id_linea_asignada ? (
-                            <span className="badge badge-ok">LÍNEA {ord.linea_nombre}</span>
-                          ) : (
-                            <span className="badge badge-warn">SIN ASIGNAR</span>
-                          )}
-                        </td>
-                        <td>
-                          <span
-                            className={`badge ${
-                              ord.estado === 'En Producción'
-                                ? 'badge-accent'
-                                : ord.estado === 'Asignada'
-                                ? 'badge-info'
-                                : 'badge-dark'
-                            }`}
-                          >
-                            {ord.estado}
-                          </span>
-                        </td>
-                        <td>
-                          <div style={{ display: 'flex', gap: '4px' }}>
-                            {CATALOGO_LINEAS.map((linea) => (
-                              <button
-                                key={linea.id}
-                                onClick={async () => {
-                                  const res = await asignarLineaOrden(ord.id, linea.id);
-                                  if (!res.ok) {
-                                    setMensaje({ tipo: 'err', texto: res.error || 'Error al asignar línea' });
-                                  } else {
-                                    setMensaje({ tipo: 'ok', texto: `Orden ${ord.folio} asignada a ${linea.nombre_linea}` });
-                                  }
-                                }}
-                                className="btn btn-outline"
-                                style={{
-                                  height: '1.8rem',
-                                  padding: '0 0.5rem',
-                                  fontSize: '0.65rem',
-                                  backgroundColor: ord.id_linea_asignada === linea.id ? 'var(--accent)' : undefined,
-                                  color: ord.id_linea_asignada === linea.id ? 'var(--carbon-900)' : undefined,
-                                  borderColor: ord.id_linea_asignada === linea.id ? 'var(--accent)' : undefined,
-                                }}
-                                title={`Asignar a Línea ${linea.nombre_linea}`}
-                              >
-                                {linea.nombre_linea}
-                              </button>
-                            ))}
-                          </div>
+                    {ordenesFiltradas.length === 0 ? (
+                      <tr>
+                        <td colSpan={8} style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '1.5rem' }}>
+                          [SIN ÓRDENES QUE COINCIDAN CON EL FILTRO]
                         </td>
                       </tr>
-                    ))}
+                    ) : (
+                      ordenesFiltradas.map((ord) => {
+                        const seleccionada = ordenSeleccionada?.id === ord.id;
+                        return (
+                          <tr
+                            key={ord.id}
+                            onClick={() => setOrdenSeleccionadaId(ord.id)}
+                            style={{
+                              cursor: 'pointer',
+                              background: seleccionada ? 'rgba(255, 250, 0, 0.12)' : undefined,
+                            }}
+                          >
+                            <td style={{ fontFamily: 'var(--font-mono)', fontWeight: 700, color: 'var(--carbon-900)' }}>
+                              {ord.folio}
+                            </td>
+                            <td>{ord.cliente_nombre}</td>
+                            <td>
+                              <span style={{ fontWeight: 700 }}>{ord.modelo_nombre}</span> - {ord.color_nombre}
+                            </td>
+                            <td style={{ fontFamily: 'var(--font-mono)' }}>
+                              {ord.piezas_ensambladas || 0} / {ord.cantidad} pzas
+                            </td>
+                            <td>
+                              {ord.id_linea_asignada ? (
+                                <span className="badge badge-ok">LÍNEA {ord.linea_nombre}</span>
+                              ) : (
+                                <span className="badge badge-warn">SIN ASIGNAR</span>
+                              )}
+                            </td>
+                            <td style={{ fontFamily: 'var(--font-mono)', fontSize: '0.75rem' }}>
+                              {ord.fecha_compromiso || '--'}
+                            </td>
+                            <td>
+                              <span
+                                className={`badge ${
+                                  ord.estado === 'En Producción'
+                                    ? 'badge-accent'
+                                    : ord.estado === 'Asignada'
+                                    ? 'badge-info'
+                                    : 'badge-dark'
+                                }`}
+                              >
+                                {ord.estado}
+                              </span>
+                            </td>
+                            <td onClick={(e) => e.stopPropagation()}>
+                              <div style={{ display: 'flex', gap: '4px' }}>
+                                {CATALOGO_LINEAS.map((linea) => (
+                                  <button
+                                    key={linea.id}
+                                    onClick={async () => {
+                                      const res = await asignarLineaOrden(ord.id, linea.id);
+                                      if (!res.ok) {
+                                        setMensaje({ tipo: 'err', texto: res.error || 'Error al asignar línea' });
+                                      } else {
+                                        setMensaje({ tipo: 'ok', texto: `Orden ${ord.folio} asignada a ${linea.nombre_linea}` });
+                                      }
+                                    }}
+                                    className="btn btn-outline"
+                                    style={{
+                                      height: '1.8rem',
+                                      padding: '0 0.5rem',
+                                      fontSize: '0.65rem',
+                                      backgroundColor: ord.id_linea_asignada === linea.id ? 'var(--accent)' : undefined,
+                                      color: ord.id_linea_asignada === linea.id ? 'var(--carbon-900)' : undefined,
+                                      borderColor: ord.id_linea_asignada === linea.id ? 'var(--accent)' : undefined,
+                                    }}
+                                    title={`Asignar a Línea ${linea.nombre_linea}`}
+                                  >
+                                    {linea.nombre_linea}
+                                  </button>
+                                ))}
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })
+                    )}
                   </tbody>
                 </table>
+              </div>
+              {/* PIE DE SELECCIÓN (SPEC ORIGINAL) */}
+              <div
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  padding: '0.65rem 1rem',
+                  borderTop: '1px solid var(--border-default)',
+                  background: 'var(--bg-surface-elevated)',
+                  fontFamily: 'var(--font-mono)',
+                  fontSize: '0.75rem',
+                }}
+              >
+                <span>
+                  Seleccionada: <strong>{ordenSeleccionada ? ordenSeleccionada.folio : 'Ninguna'}</strong>
+                </span>
+                <button
+                  type="button"
+                  disabled={!ordenSeleccionada}
+                  onClick={() => setModalDetalle(true)}
+                  className="btn btn-outline"
+                  style={{ height: '1.9rem', padding: '0 0.75rem', fontSize: '0.7rem' }}
+                >
+                  VER DETALLE
+                </button>
               </div>
             </div>
           </div>
@@ -175,6 +311,7 @@ export default function OrdenesStation() {
                 <div className="form-group">
                   <label className="form-label">FOLIO DE LA ORDEN</label>
                   <input
+                    ref={folioInputRef}
                     type="text"
                     required
                     placeholder="Ej. ORD-2026-105"
@@ -242,14 +379,44 @@ export default function OrdenesStation() {
                   </div>
                 </div>
 
-                <button type="submit" className="btn btn-yellow" style={{ marginTop: '0.5rem' }}>
-                  REGISTRAR ORDEN
-                </button>
+                <div style={{ display: 'flex', gap: '0.75rem', marginTop: '0.5rem' }}>
+                  <button type="button" onClick={limpiarFormulario} className="btn btn-outline" style={{ flex: 1 }}>
+                    CANCELAR
+                  </button>
+                  <button type="submit" className="btn btn-yellow" style={{ flex: 1.5 }}>
+                    GUARDAR ORDEN
+                  </button>
+                </div>
               </form>
             </div>
           </div>
         </div>
       </div>
+
+      {/* MODAL DETALLE DE ORDEN (SOLO LECTURA) */}
+      {modalDetalle && ordenSeleccionada && (
+        <div className="modal-overlay">
+          <div className="modal-content">
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+              <span className="station-title" style={{ fontSize: '1.15rem' }}>
+                DETALLE DE ORDEN · {ordenSeleccionada.folio}
+              </span>
+              <button onClick={() => setModalDetalle(false)} className="btn btn-outline" style={{ height: '2rem' }}>
+                CERRAR
+              </button>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', fontSize: '0.85rem' }}>
+              <div><strong>Cliente:</strong> {ordenSeleccionada.cliente_nombre}</div>
+              <div><strong>Estado:</strong> {ordenSeleccionada.estado}</div>
+              <div><strong>Modelo:</strong> {ordenSeleccionada.modelo_nombre}</div>
+              <div><strong>Color:</strong> {ordenSeleccionada.color_nombre}</div>
+              <div><strong>Avance:</strong> {ordenSeleccionada.piezas_ensambladas || 0} / {ordenSeleccionada.cantidad} pzas</div>
+              <div><strong>Línea:</strong> {ordenSeleccionada.linea_nombre ? `Línea ${ordenSeleccionada.linea_nombre}` : 'Sin asignar'}</div>
+              <div><strong>Fecha compromiso:</strong> {ordenSeleccionada.fecha_compromiso || '--'}</div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* MODAL DE IMPORTACIÓN CSV */}
       {modalImportar && (
