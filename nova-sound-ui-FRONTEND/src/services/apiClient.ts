@@ -5,6 +5,11 @@
 
 export const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000/api';
 
+const IS_STATIC_REMOTE_DEMO =
+  typeof window !== 'undefined' &&
+  !['localhost', '127.0.0.1'].includes(window.location.hostname) &&
+  !import.meta.env.VITE_API_URL;
+
 export type ApiResult<T> =
   | { ok: true; data: T }
   | { ok: false; status: number; error: string };
@@ -22,6 +27,14 @@ export async function apiRequest<T>(
   path: string,
   options: RequestInit = {}
 ): Promise<ApiResult<T>> {
+  if (IS_STATIC_REMOTE_DEMO) {
+    return {
+      ok: false,
+      status: 0,
+      error: 'Modo demo estático sin servidor API remoto.',
+    };
+  }
+
   const normalizedPath = path.startsWith('/') ? path : `/${path}`;
   const url = `${API_URL}${normalizedPath}`;
 

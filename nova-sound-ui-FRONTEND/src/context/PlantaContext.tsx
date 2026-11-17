@@ -745,17 +745,41 @@ export const PlantaProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     return sesion.usuario.id_rol === RolesEnum.ADMINISTRADOR;
   };
 
-  // MÉTODOS DE AUTENTICACIÓN Y SESIÓN (conectado a POST /api/auth/login)
+  // MÉTODOS DE AUTENTICACIÓN Y SESIÓN (conectado a POST /api/auth/login + fallback demo offline)
   const iniciarSesion = async (login: string, contrasena: string, idLinea = 1, idTurno = 1) => {
     const res = await authApi.login(login, contrasena);
+    const lineaObj = CATALOGO_LINEAS.find((l) => l.id === idLinea) || CATALOGO_LINEAS[0];
+    const turnoObj = CATALOGO_TURNOS.find((t) => t.id === idTurno) || CATALOGO_TURNOS[0];
+
     if (!res.ok) {
-      if (res.status === 0) setBackendOnline(false);
+      if (res.status === 0) {
+        setBackendOnline(false);
+        const usuarioDemo = USUARIOS_OFICIALES.find(
+          (u) =>
+            u.usuario_login.toLowerCase() === login.trim().toLowerCase() ||
+            u.nomina.toLowerCase() === login.trim().toLowerCase()
+        );
+        if (usuarioDemo && contrasena === '123456') {
+          const nuevaSesion: SesionOperativa = {
+            usuario: usuarioDemo,
+            linea: lineaObj,
+            turno: turnoObj,
+          };
+          setApiAuthHeaders(usuarioDemo.id, usuarioDemo.id_rol);
+          try {
+            localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(nuevaSesion));
+          } catch {}
+          setSesion(nuevaSesion);
+          setEstaAutenticado(true);
+          registrarBitacora('AUTH', `LOGIN_DEMO: ${usuarioDemo.nombre_completo}`);
+          return { ok: true };
+        }
+        return { ok: false, error: 'Credenciales inválidas (en modo demo usa pass: 123456)' };
+      }
       return { ok: false, error: res.error };
     }
 
     setBackendOnline(true);
-    const lineaObj = CATALOGO_LINEAS.find((l) => l.id === idLinea) || CATALOGO_LINEAS[0];
-    const turnoObj = CATALOGO_TURNOS.find((t) => t.id === idTurno) || CATALOGO_TURNOS[0];
 
     const usuarioAutenticado: Usuario = {
       id: res.data.usuario.id,
