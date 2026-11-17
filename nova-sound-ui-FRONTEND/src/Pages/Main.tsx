@@ -146,7 +146,7 @@ export default function Main() {
 
   return (
     <div className="app-container" style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
-      {/* Topbar con pestañas abiertas estilo VS Code */}
+      {/* Topbar Soft New-Tech con pestañas suaves */}
       <Topbar
         sesion={sesion}
         items={itemsPermitidos}
@@ -168,43 +168,21 @@ export default function Main() {
         />
 
         <main className="main-content tex-grid" style={{ flex: 1, minWidth: 0, position: 'relative', overflowX: 'hidden' }}>
-          {/* Marca de agua viva Nova Sound en el fondo de todos los módulos */}
-          <div
-            aria-hidden="true"
-            style={{
-              position: 'fixed',
-              right: '-60px',
-              bottom: '18px',
-              width: '320px',
-              height: '320px',
-              pointerEvents: 'none',
-              opacity: 0.11,
-              zIndex: 0,
-            }}
-          >
-            <svg width="320" height="320" viewBox="0 0 230 230">
-              <circle cx="115" cy="115" r="108" fill="none" stroke="#191919" strokeWidth="1.5" />
-              <circle className="ef-spin-slow" cx="115" cy="115" r="108" fill="none" stroke="#191919" strokeWidth="4" strokeDasharray="95 585" />
-              <circle cx="115" cy="115" r="82" fill="none" stroke="#191919" strokeWidth="1" strokeDasharray="6 6" />
-              <circle className="ef-spin-reverse" cx="115" cy="115" r="58" fill="none" stroke="#191919" strokeWidth="2.5" strokeDasharray="48 160" />
-              <circle cx="115" cy="115" r="32" fill="none" stroke="#191919" strokeWidth="1.5" />
-            </svg>
-          </div>
           <div style={{ position: 'relative', zIndex: 2 }}>
             {itemsPermitidos.find((i) => i.id === vistaActual)?.component || itemsPermitidos[0]?.component}
           </div>
         </main>
       </div>
 
-      {/* Ticker SCADA de telemetría viva industrial */}
+      {/* Ticker discreto de telemetría de planta */}
       <footer
         style={{
-          height: '24px',
-          backgroundColor: '#191919',
-          borderTop: '1px solid #fffa00',
-          color: 'rgba(250, 250, 250, 0.78)',
-          fontFamily: 'var(--font-mono)',
-          fontSize: '10.5px',
+          height: '26px',
+          backgroundColor: '#181a1f',
+          borderTop: '1px solid rgba(255, 255, 255, 0.06)',
+          color: 'rgba(250, 250, 250, 0.72)',
+          fontFamily: 'var(--font-sans)',
+          fontSize: '11.5px',
           display: 'flex',
           alignItems: 'center',
           overflow: 'hidden',
@@ -213,32 +191,33 @@ export default function Main() {
       >
         <div
           style={{
-            backgroundColor: '#fffa00',
-            color: '#191919',
-            fontWeight: 700,
+            backgroundColor: 'rgba(255, 255, 255, 0.08)',
+            color: '#f5c400',
+            fontWeight: 600,
             padding: '0 12px',
             height: '100%',
             display: 'flex',
             alignItems: 'center',
             gap: '6px',
             flexShrink: 0,
-            letterSpacing: '0.4px',
+            fontSize: '11px',
+            letterSpacing: '0.3px',
           }}
         >
-          <span>ESTADO DE PLANTA</span>
+          <span>Estado de planta</span>
         </div>
         <div style={{ flex: 1, overflow: 'hidden', paddingLeft: '14px' }}>
           <div className="ef-ticker-track">
             {[0, 1].map((dup) => (
               <span key={dup} style={{ display: 'inline-flex', gap: '24px', alignItems: 'center' }}>
-                <span>Línea: <strong style={{ color: '#fffa00' }}>{sesion.linea.nombre_linea}</strong></span>
+                <span>Línea: <strong style={{ color: '#fafafa' }}>{sesion.linea.nombre_linea}</strong></span>
                 <span>Turno: <strong style={{ color: '#fafafa' }}>{sesion.turno.nombre_turno}</strong></span>
-                <span>Órdenes activas: <strong style={{ color: '#fffa00' }}>{ordenesActivas}</strong></span>
+                <span>Órdenes activas: <strong style={{ color: '#f5c400' }}>{ordenesActivas}</strong></span>
                 <span>Listas empaque: <strong style={{ color: '#fafafa' }}>{sueltasParaEmpaque}</strong></span>
                 <span>Cajas embarque: <strong style={{ color: '#fafafa' }}>{cajasListasEmbarque}</strong></span>
-                <span>Calidad pendiente: <strong style={{ color: calidadEnEspera > 0 ? '#ef4444' : '#fafafa' }}>{calidadEnEspera}</strong></span>
-                <span>Autorizaciones: <strong style={{ color: autorizacionesPendientes > 0 ? '#fffa00' : '#fafafa' }}>{autorizacionesPendientes}</strong></span>
-                <span style={{ color: 'rgba(250,250,250,0.45)' }}>Nova Sound · Control de Producción y Trazabilidad</span>
+                <span>Calidad pendiente: <strong style={{ color: calidadEnEspera > 0 ? '#fca5a5' : '#fafafa' }}>{calidadEnEspera}</strong></span>
+                <span>Autorizaciones: <strong style={{ color: autorizacionesPendientes > 0 ? '#f5c400' : '#fafafa' }}>{autorizacionesPendientes}</strong></span>
+                <span style={{ color: 'rgba(250,250,250,0.42)' }}>Nova Sound · Control de Producción y Trazabilidad</span>
               </span>
             ))}
           </div>

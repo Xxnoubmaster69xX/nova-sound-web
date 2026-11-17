@@ -55,16 +55,16 @@ export default function TrazabilidadStation() {
                 value={query}
                 onChange={(e) => setQuery(e.target.value.toUpperCase())}
               />
-              <button type="submit" className="btn btn-yellow" style={{ minWidth: '160px' }}>
-                LOCALIZAR SERIE
+              <button type="submit" className="btn btn-primary" style={{ minWidth: '160px' }}>
+                Localizar serie
               </button>
             </form>
 
-            <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.75rem', alignItems: 'center' }}>
-              <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
-                SERIES DE PRUEBA RÁPIDA:
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.45rem', marginTop: '0.85rem', alignItems: 'center' }}>
+              <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontFamily: 'var(--font-sans)', fontWeight: 500, marginRight: '4px' }}>
+                Series recientes:
               </span>
-              {unidades.map((u) => (
+              {unidades.slice(0, 10).map((u) => (
                 <button
                   key={u.id}
                   type="button"
@@ -73,7 +73,7 @@ export default function TrazabilidadStation() {
                     setData(buscarTrazabilidad(u.numero_serie));
                   }}
                   className="btn btn-outline"
-                  style={{ height: '1.8rem', padding: '0 0.5rem', fontSize: '0.65rem' }}
+                  style={{ height: '28px', padding: '0 10px', fontSize: '0.72rem', fontFamily: 'var(--font-mono)', whiteSpace: 'nowrap' }}
                 >
                   {u.numero_serie}
                 </button>

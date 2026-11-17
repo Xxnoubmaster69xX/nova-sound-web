@@ -26,19 +26,12 @@ interface TopbarProps {
   onCerrarSesion?: () => void;
 }
 
-const PAL = {
-  accent: '#fffa00',
-  headerBg: '#191919',
-  onHeader: '#fafafa',
-  onHeaderMuted: 'rgba(250, 250, 250, 0.65)',
-  onHeaderLine: 'rgba(255, 255, 255, 0.16)',
-  tabBg: '#fafafa',
-  tabActiveBg: '#ffffff',
-  border: '#d9d9d9',
-  textStrong: '#191919',
-  textMuted: '#666666',
-  textDim: '#888888',
-};
+function getInitials(nombre: string): string {
+  const parts = nombre.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return 'NS';
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
+}
 
 export default function Topbar({
   sesion,
@@ -50,76 +43,85 @@ export default function Topbar({
   onCerrarSesion,
 }: TopbarProps) {
   const { modoMantenimiento, mensajeMantenimiento, cambiarLineaSesion, cambiarTurnoSesion, sincronizarAhora } = usePlanta();
+  const activeItem = items.find((i) => i.id === vistaActual);
+  const initials = getInitials(sesion.usuario.nombre_completo);
 
   return (
     <header
       style={{
-        backgroundColor: PAL.headerBg,
+        backgroundColor: '#ffffff',
         display: 'flex',
         flexDirection: 'column',
+        borderBottom: '1px solid var(--border-subtle)',
       }}
     >
-      {/* 0. BANNER DE MANTENIMIENTO TÁCTICO (P-39) */}
+      {/* 0. BANNER DE MANTENIMIENTO */}
       {modoMantenimiento && (
         <div className="maintenance-banner tex-warn-stripes">
-          <span style={{ background: '#191919', color: '#fffa00', padding: '1px 8px', fontWeight: 800 }}>
-            [AVISO DE MANTENIMIENTO]
+          <span style={{ background: '#181a1f', color: '#f5c400', padding: '2px 8px', borderRadius: '4px', fontWeight: 700 }}>
+            AVISO DE MANTENIMIENTO
           </span>
-          <span style={{ background: '#191919', color: '#fafafa', padding: '1px 8px' }}>
+          <span style={{ background: '#181a1f', color: '#fafafa', padding: '2px 8px', borderRadius: '4px' }}>
             {mensajeMantenimiento}
           </span>
         </div>
       )}
 
-      {/* 1. BARRA PRINCIPAL: BRANDING + TELEMETRÍA DE PLANTA + SESIÓN */}
+      {/* 1. BARRA PRINCIPAL BLANCA SOFT NEW-TECH */}
       <div
-        className="tex-carbon-subtle"
         style={{
-          position: 'relative',
-          overflow: 'hidden',
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
-          padding: '10px 18px',
+          padding: '10px 20px',
           flexWrap: 'wrap',
           gap: '12px',
-          borderBottom: '2px solid #fffa00',
+          borderBottom: '1px solid var(--border-subtle)',
         }}
       >
-        <span className="ef-topbar-beam" aria-hidden="true" />
-        {/* Identidad de Marca y Sistema */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <LogoBocina size={28} />
+        {/* Izquierda: Branding Nova Sound + Breadcrumb */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <span
-              style={{
-                fontFamily: 'var(--font-display)',
-                fontSize: '15px',
-                fontWeight: 700,
-                letterSpacing: '0.5px',
-                color: PAL.onHeader,
-              }}
-            >
-              NOVA SOUND
-            </span>
-            <span
-              style={{
-                fontSize: '10px',
-                fontFamily: 'var(--font-sans)',
-                color: 'rgba(250, 250, 250, 0.72)',
-                backgroundColor: 'rgba(255, 255, 255, 0.08)',
-                padding: '2px 8px',
-                borderRadius: '3px',
-                fontWeight: 600,
-                letterSpacing: '0.4px',
-              }}
-            >
-              PLANTA MES
+            <LogoBocina size={28} />
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span
+                style={{
+                  fontFamily: 'var(--font-display)',
+                  fontSize: '15px',
+                  fontWeight: 700,
+                  letterSpacing: '-0.01em',
+                  color: 'var(--text-main)',
+                }}
+              >
+                NOVA SOUND
+              </span>
+              <span
+                style={{
+                  fontSize: '11px',
+                  fontWeight: 600,
+                  color: 'var(--text-muted)',
+                  backgroundColor: 'var(--bg-surface-elevated)',
+                  padding: '2px 8px',
+                  borderRadius: '9999px',
+                }}
+              >
+                Control de planta
+              </span>
+            </div>
+          </div>
+
+          <span style={{ width: '1px', height: '18px', backgroundColor: 'var(--border-default)' }} aria-hidden="true" />
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', color: 'var(--text-muted)' }}>
+            <span>Producción</span>
+            <span style={{ color: 'var(--text-dim)' }}>/</span>
+            <span style={{ color: 'var(--text-main)', fontWeight: 600 }}>
+              {activeItem?.label ?? 'Inicio'}
             </span>
           </div>
         </div>
 
-        {/* Ficha Operativa en Vivo + Controles de Línea / Turno + Salir */}
+        {/* Derecha: Línea / Turno + Operador + Sync + Salir */}
         <div
           style={{
             display: 'flex',
@@ -133,15 +135,14 @@ export default function Topbar({
             style={{
               display: 'flex',
               alignItems: 'center',
-              gap: '4px',
-              backgroundColor: 'rgba(255, 255, 255, 0.05)',
-              border: `1px solid ${PAL.onHeaderLine}`,
-              padding: '3px 6px',
-              borderRadius: '2px',
+              gap: '3px',
+              backgroundColor: 'var(--bg-surface-elevated)',
+              padding: '3px 5px',
+              borderRadius: '8px',
             }}
           >
-            <span style={{ color: PAL.onHeaderMuted, fontSize: '10px', fontFamily: 'var(--font-mono)', marginRight: '2px' }}>
-              LÍNEA:
+            <span style={{ color: 'var(--text-muted)', fontSize: '11.5px', fontWeight: 500, padding: '0 4px' }}>
+              Línea
             </span>
             {[1, 2, 3].map((lId) => {
               const active = sesion.linea.id === lId;
@@ -151,15 +152,16 @@ export default function Topbar({
                   type="button"
                   onClick={() => cambiarLineaSesion(lId)}
                   style={{
-                    backgroundColor: active ? PAL.accent : 'transparent',
-                    color: active ? '#191919' : PAL.onHeader,
-                    border: active ? '1px solid #fffa00' : '1px solid rgba(255,255,255,0.18)',
-                    padding: '2px 7px',
-                    fontFamily: 'var(--font-mono)',
-                    fontSize: '11px',
-                    fontWeight: 700,
+                    backgroundColor: active ? '#ffffff' : 'transparent',
+                    color: active ? 'var(--text-main)' : 'var(--text-muted)',
+                    border: active ? '1px solid var(--border-default)' : '1px solid transparent',
+                    boxShadow: active ? '0 1px 2px rgba(15,23,42,0.06)' : 'none',
+                    padding: '3px 8px',
+                    fontFamily: 'var(--font-sans)',
+                    fontSize: '12px',
+                    fontWeight: active ? 600 : 500,
                     cursor: 'pointer',
-                    borderRadius: '2px',
+                    borderRadius: '6px',
                   }}
                 >
                   L{lId}
@@ -173,15 +175,14 @@ export default function Topbar({
             style={{
               display: 'flex',
               alignItems: 'center',
-              gap: '4px',
-              backgroundColor: 'rgba(255, 255, 255, 0.05)',
-              border: `1px solid ${PAL.onHeaderLine}`,
-              padding: '3px 6px',
-              borderRadius: '2px',
+              gap: '3px',
+              backgroundColor: 'var(--bg-surface-elevated)',
+              padding: '3px 5px',
+              borderRadius: '8px',
             }}
           >
-            <span style={{ color: PAL.onHeaderMuted, fontSize: '10px', fontFamily: 'var(--font-mono)', marginRight: '2px' }}>
-              TURNO:
+            <span style={{ color: 'var(--text-muted)', fontSize: '11.5px', fontWeight: 500, padding: '0 4px' }}>
+              Turno
             </span>
             {[1, 2, 3].map((tId) => {
               const active = sesion.turno.id === tId;
@@ -191,15 +192,16 @@ export default function Topbar({
                   type="button"
                   onClick={() => cambiarTurnoSesion(tId)}
                   style={{
-                    backgroundColor: active ? PAL.accent : 'transparent',
-                    color: active ? '#191919' : PAL.onHeader,
-                    border: active ? '1px solid #fffa00' : '1px solid rgba(255,255,255,0.18)',
-                    padding: '2px 7px',
-                    fontFamily: 'var(--font-mono)',
-                    fontSize: '11px',
-                    fontWeight: 700,
+                    backgroundColor: active ? '#ffffff' : 'transparent',
+                    color: active ? 'var(--text-main)' : 'var(--text-muted)',
+                    border: active ? '1px solid var(--border-default)' : '1px solid transparent',
+                    boxShadow: active ? '0 1px 2px rgba(15,23,42,0.06)' : 'none',
+                    padding: '3px 8px',
+                    fontFamily: 'var(--font-sans)',
+                    fontSize: '12px',
+                    fontWeight: active ? 600 : 500,
                     cursor: 'pointer',
-                    borderRadius: '2px',
+                    borderRadius: '6px',
                   }}
                 >
                   T{tId}
@@ -208,58 +210,50 @@ export default function Topbar({
             })}
           </div>
 
-          {/* Indicador de Operador y Estado */}
+          {/* Avatar circular + Operador */}
           <div
             style={{
               display: 'flex',
               alignItems: 'center',
               gap: '8px',
-              backgroundColor: 'rgba(255, 255, 255, 0.05)',
-              border: `1px solid ${PAL.onHeaderLine}`,
-              padding: '5px 11px',
-              borderRadius: '3px',
-              fontSize: '12px',
+              padding: '3px 6px',
+              fontSize: '13px',
               fontFamily: 'var(--font-sans)',
             }}
+            title={NOMBRES_ROLES[sesion.usuario.id_rol] ?? String(sesion.usuario.id_rol)}
           >
             <span
               style={{
-                width: '6px',
-                height: '6px',
-                borderRadius: '50%',
-                backgroundColor: '#10b981',
-                display: 'inline-block',
+                width: '28px',
+                height: '28px',
+                borderRadius: '9999px',
+                backgroundColor: 'var(--bg-surface-elevated)',
+                color: 'var(--text-main)',
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '11px',
+                fontWeight: 600,
+                border: '1px solid var(--border-subtle)',
               }}
-              title="Sesión activa"
-            />
-            <span style={{ color: PAL.onHeaderMuted, fontSize: '11px' }}>
-              {NOMBRES_ROLES[sesion.usuario.id_rol] ?? sesion.usuario.id_rol} ·
+            >
+              {initials}
             </span>
-            <strong style={{ color: PAL.onHeader, fontWeight: 600 }}>{sesion.usuario.nombre_completo}</strong>
+            <span style={{ color: 'var(--text-main)', fontWeight: 500 }}>
+              {sesion.usuario.nombre_completo}
+            </span>
           </div>
 
           {/* Botón Sincronizar con BD */}
           <button
             type="button"
             onClick={() => sincronizarAhora()}
-            style={{
-              padding: '5px 9px',
-              fontSize: '11px',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '4px',
-              color: '#fafafa',
-              backgroundColor: 'rgba(255,255,255,0.08)',
-              border: `1px solid ${PAL.onHeaderLine}`,
-              borderRadius: '2px',
-              cursor: 'pointer',
-              fontFamily: 'var(--font-mono)',
-              fontWeight: 700,
-            }}
+            className="btn btn-outline"
+            style={{ padding: '6px 10px', fontSize: '12px' }}
             title="Sincronizar colas y registros con PostgreSQL"
           >
-            <Icon name="sync" size={14} color="#fffa00" />
-            <span>SYNC</span>
+            <Icon name="sync" size={14} color="var(--text-muted)" />
+            <span>Sync</span>
           </button>
 
           {/* Botón Cerrar Sesión */}
@@ -267,38 +261,24 @@ export default function Topbar({
             <button
               type="button"
               onClick={onCerrarSesion}
-              style={{
-                padding: '5px 10px',
-                fontSize: '11px',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '4px',
-                color: '#191919',
-                backgroundColor: PAL.accent,
-                border: '1px solid #fffa00',
-                borderRadius: '2px',
-                cursor: 'pointer',
-                fontFamily: 'var(--font-mono)',
-                fontWeight: 800,
-              }}
+              className="btn btn-outline"
+              style={{ padding: '6px 12px', fontSize: '12px' }}
               title="Cerrar turno y salir al login"
             >
-              <Icon name="logout" size={15} color="#191919" />
-              <span>SALIR</span>
+              <span>Salir</span>
             </button>
           )}
         </div>
       </div>
 
-      {/* 2. PESTAÑAS ABIERTAS ESTILO VS CODE */}
+      {/* 2. PESTAÑAS ABIERTAS SUAVES */}
       <nav
         style={{
           display: 'flex',
-          gap: '2px',
-          padding: '0 14px',
-          backgroundColor: PAL.tabBg,
+          gap: '4px',
+          padding: '6px 20px',
+          backgroundColor: '#faf9f6',
           overflowX: 'auto',
-          borderBottom: `1px solid ${PAL.border}`,
         }}
       >
         {openTabIds
@@ -313,22 +293,21 @@ export default function Topbar({
                 style={{
                   display: 'inline-flex',
                   alignItems: 'center',
-                  backgroundColor: activo ? PAL.tabActiveBg : 'transparent',
-                  borderBottom: activo ? '3px solid #191919' : '3px solid transparent',
-                  boxShadow: activo ? 'inset 0 -3px 0 #fffa00' : 'none',
-                  borderRight: `1px solid ${PAL.border}`,
+                  backgroundColor: activo ? '#ffffff' : 'transparent',
+                  border: activo ? '1px solid var(--border-subtle)' : '1px solid transparent',
+                  borderRadius: '8px',
+                  boxShadow: activo ? '0 1px 2px rgba(15,23,42,0.04)' : 'none',
                 }}
               >
                 <button
                   type="button"
                   style={{
                     fontFamily: 'var(--font-sans)',
-                    fontSize: '12px',
-                    fontWeight: activo ? 700 : 500,
-                    letterSpacing: '0.1px',
-                    padding: '9px 10px 9px 13px',
+                    fontSize: '12.5px',
+                    fontWeight: activo ? 600 : 500,
+                    padding: '6px 10px 6px 12px',
                     backgroundColor: 'transparent',
-                    color: activo ? PAL.textStrong : PAL.textMuted,
+                    color: activo ? 'var(--text-main)' : 'var(--text-muted)',
                     border: 'none',
                     cursor: 'pointer',
                     display: 'inline-flex',
@@ -341,22 +320,21 @@ export default function Topbar({
                   {item.iconName && (
                     <Icon
                       name={item.iconName}
-                      size={16}
-                      color={activo ? '#191919' : PAL.textDim}
+                      size={15}
+                      color={activo ? 'var(--text-main)' : 'var(--text-dim)'}
                     />
                   )}
                   <span>{item.label}</span>
                   {typeof item.badge === 'number' && item.badge > 0 && (
                     <span
                       style={{
-                        fontSize: '10px',
-                        fontFamily: 'var(--font-mono)',
-                        fontWeight: 800,
-                        padding: '1px 5px',
-                        borderRadius: '2px',
-                        backgroundColor: item.badgeAlert ? '#ef4444' : activo ? '#fffa00' : '#e5e5e5',
-                        color: item.badgeAlert ? '#ffffff' : '#191919',
-                        lineHeight: 1.2,
+                        fontSize: '10.5px',
+                        fontWeight: 600,
+                        padding: '1px 6px',
+                        borderRadius: '9999px',
+                        backgroundColor: item.badgeAlert ? 'rgba(239, 68, 68, 0.12)' : 'var(--bg-surface-elevated)',
+                        color: item.badgeAlert ? '#b91c1c' : 'var(--text-muted)',
+                        lineHeight: 1.3,
                       }}
                     >
                       {item.badge}
@@ -374,10 +352,10 @@ export default function Topbar({
                     style={{
                       background: 'transparent',
                       border: 'none',
-                      color: PAL.textDim,
+                      color: 'var(--text-dim)',
                       cursor: 'pointer',
                       padding: '4px 8px 4px 2px',
-                      fontSize: '13px',
+                      fontSize: '14px',
                       lineHeight: 1,
                       display: 'inline-flex',
                       alignItems: 'center',

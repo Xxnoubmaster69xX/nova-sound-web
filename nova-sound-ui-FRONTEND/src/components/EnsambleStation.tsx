@@ -212,13 +212,13 @@ export default function EnsambleStation() {
                 type="text"
                 placeholder="Buscar por orden o modelo..."
                 className="form-input"
-                style={{ flex: 1, minWidth: '180px', height: '2rem', fontSize: '0.8rem' }}
+                style={{ flex: 1, minWidth: '180px', height: '36px', fontSize: '0.82rem' }}
                 value={busqueda}
                 onChange={(e) => setBusqueda(e.target.value)}
               />
               <select
                 className="form-select"
-                style={{ height: '2rem', fontSize: '0.8rem', minWidth: '130px' }}
+                style={{ height: '36px', fontSize: '0.82rem', minWidth: '130px' }}
                 value={filtroEstado}
                 onChange={(e) => setFiltroEstado(e.target.value)}
               >
@@ -228,11 +228,11 @@ export default function EnsambleStation() {
               </select>
               <button
                 type="button"
-                className="btn btn-yellow"
-                style={{ height: '2rem', padding: '0 0.85rem', fontSize: '0.75rem' }}
+                className="btn btn-primary"
+                style={{ height: '36px', padding: '0 14px', fontSize: '0.78rem', whiteSpace: 'nowrap' }}
                 onClick={() => cantidadInputRef.current?.focus()}
               >
-                + REGISTRAR
+                + Registrar
               </button>
             </div>
             <div className="panel-body" style={{ padding: 0 }}>

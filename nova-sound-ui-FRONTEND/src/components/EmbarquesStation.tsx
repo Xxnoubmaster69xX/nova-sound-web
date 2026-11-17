@@ -276,7 +276,7 @@ export default function EmbarquesStation() {
               <label className="form-label" style={{ margin: 0, whiteSpace: 'nowrap' }}>ESTADO:</label>
               <select
                 className="form-select"
-                style={{ height: '2rem', fontSize: '0.8rem' }}
+                style={{ height: '36px', fontSize: '0.82rem' }}
                 value={filtroEstadoEmb}
                 onChange={(e) => setFiltroEstadoEmb(e.target.value)}
               >

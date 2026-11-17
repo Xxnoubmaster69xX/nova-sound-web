@@ -166,7 +166,7 @@ export default function OrdenesStation() {
                   type="text"
                   placeholder="Folio o modelo..."
                   className="form-input"
-                  style={{ height: '2rem', fontSize: '0.8rem' }}
+                  style={{ height: '36px', fontSize: '0.82rem' }}
                   value={busqueda}
                   onChange={(e) => setBusqueda(e.target.value)}
                 />
@@ -177,7 +177,7 @@ export default function OrdenesStation() {
                 </label>
                 <select
                   className="form-select"
-                  style={{ height: '2rem', fontSize: '0.8rem', minWidth: '140px' }}
+                  style={{ height: '36px', fontSize: '0.82rem', minWidth: '140px' }}
                   value={filtroEstado}
                   onChange={(e) => setFiltroEstado(e.target.value)}
                 >
@@ -191,14 +191,14 @@ export default function OrdenesStation() {
               </div>
               <button
                 type="button"
-                className="btn btn-yellow"
-                style={{ height: '2rem', padding: '0 0.85rem', fontSize: '0.75rem' }}
+                className="btn btn-primary"
+                style={{ height: '36px', padding: '0 14px', fontSize: '0.78rem', whiteSpace: 'nowrap' }}
                 onClick={() => {
                   limpiarFormulario();
                   folioInputRef.current?.focus();
                 }}
               >
-                + NUEVA ORDEN
+                + Nueva orden
               </button>
             </div>
             <div className="panel-body" style={{ padding: 0 }}>
@@ -232,17 +232,17 @@ export default function OrdenesStation() {
                             onClick={() => setOrdenSeleccionadaId(ord.id)}
                             style={{
                               cursor: 'pointer',
-                              background: seleccionada ? 'rgba(255, 250, 0, 0.12)' : undefined,
+                              background: seleccionada ? 'rgba(245, 196, 0, 0.08)' : undefined,
                             }}
                           >
-                            <td style={{ fontFamily: 'var(--font-mono)', fontWeight: 700, color: 'var(--carbon-900)' }}>
+                            <td style={{ fontFamily: 'var(--font-mono)', fontWeight: 700, color: 'var(--carbon-900)', whiteSpace: 'nowrap' }}>
                               {ord.folio}
                             </td>
                             <td>{ord.cliente_nombre}</td>
                             <td>
                               <span style={{ fontWeight: 700 }}>{ord.modelo_nombre}</span> - {ord.color_nombre}
                             </td>
-                            <td style={{ fontFamily: 'var(--font-mono)' }}>
+                            <td style={{ fontFamily: 'var(--font-mono)', whiteSpace: 'nowrap' }}>
                               {ord.piezas_ensambladas || 0} / {ord.cantidad} pzas
                             </td>
                             <td>
@@ -252,7 +252,7 @@ export default function OrdenesStation() {
                                 <span className="badge badge-warn">SIN ASIGNAR</span>
                               )}
                             </td>
-                            <td style={{ fontFamily: 'var(--font-mono)', fontSize: '0.75rem' }}>
+                            <td style={{ fontFamily: 'var(--font-mono)', fontSize: '0.78rem', whiteSpace: 'nowrap' }}>
                               {ord.fecha_compromiso || '--'}
                             </td>
                             <td>
