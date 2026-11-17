@@ -1,17 +1,18 @@
 # Nova Sound MES — Sistema de Manufactura y Control de Calidad
 
-[![Estado](https://img.shields.io/badge/Rama-Experimental_%2F_Beta-f59e0b?style=flat-square)](#propuesta-beta--experimental)
+[![Estado](https://img.shields.io/badge/Rama-v8%2Flayout--original-f59e0b?style=flat-square)](#)
+[![Demo](https://img.shields.io/badge/Cloudflare_Pages-nova--sound--v8-orange?style=flat-square)](https://nova-sound-v8.pages.dev)
 [![Node.js](https://img.shields.io/badge/Node.js-v18+-green?style=flat-square&logo=node.js)](https://nodejs.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.7+-blue?style=flat-square&logo=typescript)](https://www.typescriptlang.org/)
 [![React](https://img.shields.io/badge/React-19-61dafb?style=flat-square&logo=react)](https://react.dev/)
 [![Vite](https://img.shields.io/badge/Vite-8+-646cff?style=flat-square&logo=vite)](https://vitejs.dev/)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-Neon.tech_%2B_PGlite_Local-336791?style=flat-square&logo=postgresql)](https://neon.tech/)
 [![Vitest](https://img.shields.io/badge/Tests-Vitest-yellow?style=flat-square&logo=vitest)](https://vitest.dev/)
-[![Audit](https://img.shields.io/badge/Auditor%C3%ADa_Caso-100%25_Cumplido-brightgreen?style=flat-square)](./Nova%20Sound%20–%20Registro%20de%20observaciones%20de%20revisi%C3%B3n.pdf)
+[![Audit](https://img.shields.io/badge/Auditor%C3%ADa_Caso-100%25_Cumplido-brightgreen?style=flat-square)](./CHANGELOG_AUDITORIA.md)
 
-> ### Propuesta Beta / Experimental (`beta/rediseno-ui-industrial`)
-> Esta rama es una **propuesta visual y de experiencia de usuario (HMI Industrial)** construida sobre el backend y la base de datos ya auditados.  
-> Se publica en una rama independiente de prueba **sin modificar `main`**, para que el equipo pueda evaluarla, compararla y decidir libremente si se adopta o se mantiene como referencia.
+> ### Versión v8 (`v8/layout-original`)
+> - **Demo en vivo (Cloudflare Pages):** https://nova-sound-v8.pages.dev (modo demo offline con 722 registros operativos en `src/data/seedOperacion.ts`, contraseña oficial `123456`).
+> - **Alineación con bocetos del semestre:** Cada estación está empatada 1-a-1 con las 19 vistas extraídas en [`docs/bocetos_pdf/`](./docs/bocetos_pdf/) y documentadas en [`MAPEO_VENTANAS_PDF_V8.md`](./MAPEO_VENTANAS_PDF_V8.md), manteniendo Topbar, Sidebar, estética HMI/Endfield, backend y base de datos en [`database/`](./database/).
 
 Sistema integral de **Ejecución de Manufactura (MES / SCADA Industrial)** desarrollado para la trazabilidad completa, control de calidad bajo protocolo **ISO-9001**, empaque por contenedores, despacho logístico y auditoría en tiempo real para líneas de producción de bocinas inteligentes Nova Sound.
 

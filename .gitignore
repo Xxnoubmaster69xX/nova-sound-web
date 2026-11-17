@@ -5,10 +5,16 @@ node_modules/
 # Archivos de entorno y credenciales (¡NO SUBIR A GITHUB!)
 .env
 .env.local
-.env.*.local
+.env.*
 *.env
+*.pem
+*.key
 !.env.example
 !*/.env.example
+
+# Cloudflare Wrangler
+.wrangler/
+*/.wrangler/
 
 # Compilaciones y builds
 dist/
