@@ -64,6 +64,16 @@ export class UnidadesController {
     }
   }
 
+  static async getInspecciones(req: Request, res: Response) {
+    try {
+      const limit = req.query.limit ? Number(req.query.limit) : 100;
+      const data = await service.getInspecciones(limit);
+      res.json(data);
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  }
+
   static async getHistorial(req: Request, res: Response) {
     try {
       const limit = req.query.limit ? Number(req.query.limit) : 50;

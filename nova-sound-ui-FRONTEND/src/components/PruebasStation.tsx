@@ -11,7 +11,9 @@ export default function PruebasStation() {
     buscarTrazabilidad,
     consultarTrazabilidadRemota,
     unidades,
+    tienePermiso,
   } = usePlanta();
+  const puedeOperar = tienePermiso('PRUEBA_EVALUAR');
 
   const [ordenId, setOrdenId] = useState<number>(ordenes[0]?.id || 1);
   const [encendido, setEncendido] = useState<boolean>(true);
@@ -27,11 +29,27 @@ export default function PruebasStation() {
     mensaje: string;
   } | null>(null);
 
-  const ordenActiva = ordenes.find((o) => o.id === ordenId);
+  const ordenActiva = ordenes.find((o) => o.id === ordenId) || ordenes[0];
   const todosChecksOk = encendido && audio && carga && bluetooth;
 
   const ejecutarEvaluacion = async (aprobarForzado: boolean) => {
-    if (!ordenActiva) return;
+    if (!puedeOperar) {
+      setResultadoReciente({
+        aprobada: false,
+        mensaje: 'Su rol actual es de solo lectura en Pruebas Funcionales (RN-14).',
+      });
+      return;
+    }
+    if (!ordenActiva) {
+      setResultadoReciente({
+        aprobada: false,
+        mensaje: 'Seleccione o registre primero una orden de producción activa para evaluar la unidad.',
+      });
+      return;
+    }
+    if (!aprobarForzado && todosChecksOk) {
+      setAudio(false);
+    }
     const checks = aprobarForzado
       ? { encendido: true, audio: true, carga: true, bluetooth: true }
       : { encendido, audio: todosChecksOk ? false : audio, carga, bluetooth };
@@ -215,7 +233,7 @@ export default function PruebasStation() {
               <form onSubmit={handleEvaluar} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
                 <div className="form-group">
                   <label className="form-label">ORDEN DE PRODUCCIÓN EN EVALUACIÓN</label>
-                  <select className="form-select" value={ordenId} onChange={(e) => setOrdenId(Number(e.target.value))}>
+                  <select className="form-select" value={ordenActiva?.id || ordenId} onChange={(e) => setOrdenId(Number(e.target.value))}>
                     {ordenes.map((ord) => (
                       <option key={ord.id} value={ord.id}>
                         {ord.folio} - {ord.modelo_nombre} ({ord.color_nombre}) [{ord.cliente_nombre}]
@@ -229,7 +247,7 @@ export default function PruebasStation() {
 
                   {/* CHECK 1: ENCENDIDO */}
                   <div
-                    className={`tech-check-card ${encendido ? 'checked' : ''}`}
+                    className={`tech-check-card ${encendido ? 'checked' : 'failed'}`}
                     onClick={() => setEncendido(!encendido)}
                   >
                     <div>
@@ -240,12 +258,12 @@ export default function PruebasStation() {
                         Voltaje nominal correcto y consumo en standby dentro de tolerancia.
                       </div>
                     </div>
-                    <div className="tech-check-indicator">{encendido ? 'OK' : '--'}</div>
+                    <div className="tech-check-indicator">{encendido ? 'OK' : 'FALLA'}</div>
                   </div>
 
                   {/* CHECK 2: AUDIO */}
                   <div
-                    className={`tech-check-card ${audio ? 'checked' : ''}`}
+                    className={`tech-check-card ${audio ? 'checked' : 'failed'}`}
                     onClick={() => setAudio(!audio)}
                   >
                     <div>
@@ -256,12 +274,12 @@ export default function PruebasStation() {
                         Barrer de 20Hz a 20kHz sin zumbido ni armónicos espurios.
                       </div>
                     </div>
-                    <div className="tech-check-indicator">{audio ? 'OK' : '--'}</div>
+                    <div className="tech-check-indicator">{audio ? 'OK' : 'FALLA'}</div>
                   </div>
 
                   {/* CHECK 3: CARGA */}
                   <div
-                    className={`tech-check-card ${carga ? 'checked' : ''}`}
+                    className={`tech-check-card ${carga ? 'checked' : 'failed'}`}
                     onClick={() => setCarga(!carga)}
                   >
                     <div>
@@ -272,12 +290,12 @@ export default function PruebasStation() {
                         Detección de conector Type-C y corriente mayor a 1.5A continua.
                       </div>
                     </div>
-                    <div className="tech-check-indicator">{carga ? 'OK' : '--'}</div>
+                    <div className="tech-check-indicator">{carga ? 'OK' : 'FALLA'}</div>
                   </div>
 
                   {/* CHECK 4: BLUETOOTH */}
                   <div
-                    className={`tech-check-card ${bluetooth ? 'checked' : ''}`}
+                    className={`tech-check-card ${bluetooth ? 'checked' : 'failed'}`}
                     onClick={() => setBluetooth(!bluetooth)}
                   >
                     <div>
@@ -288,13 +306,14 @@ export default function PruebasStation() {
                         RSSI superior a -60dBm y handshake con terminal de pruebas.
                       </div>
                     </div>
-                    <div className="tech-check-indicator">{bluetooth ? 'OK' : '--'}</div>
+                    <div className="tech-check-indicator">{bluetooth ? 'OK' : 'FALLA'}</div>
                   </div>
                 </div>
 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
                   <button
                     type="button"
+                    disabled={!puedeOperar}
                     onClick={() => ejecutarEvaluacion(true)}
                     className="btn btn-yellow"
                     style={{ height: '3.2rem', fontSize: '0.9rem' }}
@@ -303,6 +322,7 @@ export default function PruebasStation() {
                   </button>
                   <button
                     type="button"
+                    disabled={!puedeOperar}
                     onClick={() => ejecutarEvaluacion(false)}
                     className="btn btn-danger"
                     style={{ height: '3.2rem', fontSize: '0.9rem' }}
@@ -376,6 +396,7 @@ export default function PruebasStation() {
                     setAudio(true);
                     setCarga(true);
                     setBluetooth(true);
+                    setResultadoReciente(null);
                   }}
                   className="btn btn-carbon"
                 >
@@ -388,6 +409,11 @@ export default function PruebasStation() {
                     setAudio(false);
                     setCarga(true);
                     setBluetooth(true);
+                    setDefectoFallaId(6);
+                    setResultadoReciente({
+                      aprobada: false,
+                      mensaje: 'SIMULACIÓN ACTIVA: FALLA EN AUDIO (DISTORSIÓN THD) DETECTADA EN CANAL',
+                    });
                   }}
                   className="btn btn-outline"
                 >
@@ -400,6 +426,11 @@ export default function PruebasStation() {
                     setAudio(false);
                     setCarga(false);
                     setBluetooth(false);
+                    setDefectoFallaId(5);
+                    setResultadoReciente({
+                      aprobada: false,
+                      mensaje: 'SIMULACIÓN ACTIVA: UNIDAD MUERTA (SIN RESPUESTA DE ENCENDIDO)',
+                    });
                   }}
                   className="btn btn-outline"
                 >

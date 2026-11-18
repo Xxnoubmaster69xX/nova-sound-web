@@ -4,15 +4,21 @@ import { usePlanta } from '../context/PlantaContext';
 export default function TrazabilidadStation() {
   const { buscarTrazabilidad, consultarTrazabilidadRemota, serieTrazabilidad, unidades } = usePlanta();
 
-  const [query, setQuery] = useState<string>(serieTrazabilidad || unidades[0]?.numero_serie || 'NS-2026-0001');
-  const [data, setData] = useState(() => buscarTrazabilidad(query));
+  const [query, setQuery] = useState<string>(serieTrazabilidad || unidades[0]?.numero_serie || '');
+  const [data, setData] = useState(() => (query ? buscarTrazabilidad(query) : null));
 
   useEffect(() => {
     if (!serieTrazabilidad) return;
-    setQuery(serieTrazabilidad);
-    consultarTrazabilidadRemota(serieTrazabilidad).then((res) => {
+    let active = true;
+    void consultarTrazabilidadRemota(serieTrazabilidad).then((res) => {
+      if (!active) return;
+      setQuery(serieTrazabilidad);
       if (res) setData(res);
     });
+    return () => {
+      active = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [serieTrazabilidad]);
 
   const handleBuscar = async (e: React.FormEvent) => {
@@ -95,7 +101,17 @@ export default function TrazabilidadStation() {
             <div className="panel" style={{ borderLeft: '4px solid var(--accent)' }}>
               <div className="panel-header">
                 <span className="panel-title">FICHA TÉCNICA PRINCIPAL DE LA UNIDAD</span>
-                <span className="badge badge-ok">{data.unidad.estado_calidad_nombre}</span>
+                <span
+                  className={`badge ${
+                    data.unidad.id_estado_calidad === 1
+                      ? 'badge-ok'
+                      : data.unidad.id_estado_calidad === 0 || data.unidad.id_estado_calidad === 2
+                      ? 'badge-warn'
+                      : 'badge-danger'
+                  }`}
+                >
+                  {data.unidad.estado_calidad_nombre || 'Pendiente de Calidad'}
+                </span>
               </div>
               <div className="panel-body">
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1.25rem' }}>
@@ -114,7 +130,7 @@ export default function TrazabilidadStation() {
                   <div>
                     <span className="kpi-label">CLIENTE ASIGNADO</span>
                     <div style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--text-main)' }}>
-                      {data.unidad.cliente}
+                      {data.unidad.cliente || data.orden?.cliente_nombre || '--'}
                     </div>
                   </div>
                   <div>
@@ -164,15 +180,26 @@ export default function TrazabilidadStation() {
               <div className="panel">
                 <div className="panel-header">
                   <span className="panel-title">3. CALIDAD</span>
-                  <span className={`badge ${data.unidad.id_estado_calidad === 1 ? 'badge-ok' : 'badge-danger'}`}>
-                    {data.unidad.estado_calidad_nombre}
+                  <span
+                    className={`badge ${
+                      data.unidad.id_estado_calidad === 1
+                        ? 'badge-ok'
+                        : data.unidad.id_estado_calidad === 0 || data.unidad.id_estado_calidad === 2
+                        ? 'badge-warn'
+                        : 'badge-danger'
+                    }`}
+                  >
+                    {data.unidad.estado_calidad_nombre || 'Pendiente de Calidad'}
                   </span>
                 </div>
                 <div className="panel-body" style={{ fontSize: '0.8rem', lineHeight: 1.6 }}>
                   <div>Inspecciones: <strong>{data.inspecciones.length}</strong></div>
-                  <div>Último Dictamen: <strong>{data.unidad.estado_calidad_nombre}</strong></div>
+                  <div>Último Dictamen: <strong>{data.unidad.estado_calidad_nombre || 'Pendiente de Calidad'}</strong></div>
                   <div style={{ color: 'var(--text-muted)', marginTop: '0.4rem' }}>
-                    {data.inspecciones[0]?.comentarios || 'Inspección nominal conforme'}
+                    {data.inspecciones[0]?.comentarios ||
+                      (data.inspecciones.length === 0
+                        ? 'Pendiente de inspección en estación de Calidad'
+                        : 'Inspección nominal conforme')}
                   </div>
                 </div>
               </div>

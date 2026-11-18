@@ -177,8 +177,10 @@ export interface Caja {
   requisitos_empaque?: string;
   nombre_modelo?: string;
   nombre_color?: string;
+  capacidad?: number;
   capacidad_maxima?: number;
   piezas_actuales?: number;
+  detalles?: unknown[];
 }
 
 // BD-07: Histórico de unidades en caja

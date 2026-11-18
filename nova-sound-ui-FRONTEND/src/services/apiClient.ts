@@ -5,10 +5,18 @@
 
 export const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000/api';
 
-const IS_STATIC_REMOTE_DEMO =
+export const IS_STATIC_REMOTE_DEMO =
   typeof window !== 'undefined' &&
   !['localhost', '127.0.0.1'].includes(window.location.hostname) &&
   !import.meta.env.VITE_API_URL;
+
+export type ApiRow = Record<string, unknown>;
+
+export interface ApiActionResponse<T = ApiRow> {
+  ok: boolean;
+  mensaje?: string;
+  data: T;
+}
 
 export type ApiResult<T> =
   | { ok: true; data: T }
@@ -109,14 +117,14 @@ export const healthApi = {
 };
 
 export const catalogosApi = {
-  getLineas: () => apiRequest<any[]>('/catalogos/lineas'),
-  getTurnos: () => apiRequest<any[]>('/catalogos/turnos'),
-  getModelos: () => apiRequest<any[]>('/catalogos/modelos'),
-  getColores: () => apiRequest<any[]>('/catalogos/colores'),
-  getDefectos: () => apiRequest<any[]>('/catalogos/defectos'),
-  getEstadosCalidad: () => apiRequest<any[]>('/catalogos/estados-calidad'),
-  getClientes: () => apiRequest<any[]>('/catalogos/clientes'),
-  getTransportistas: () => apiRequest<any[]>('/catalogos/transportistas'),
+  getLineas: () => apiRequest<ApiRow[]>('/catalogos/lineas'),
+  getTurnos: () => apiRequest<ApiRow[]>('/catalogos/turnos'),
+  getModelos: () => apiRequest<ApiRow[]>('/catalogos/modelos'),
+  getColores: () => apiRequest<ApiRow[]>('/catalogos/colores'),
+  getDefectos: () => apiRequest<ApiRow[]>('/catalogos/defectos'),
+  getEstadosCalidad: () => apiRequest<ApiRow[]>('/catalogos/estados-calidad'),
+  getClientes: () => apiRequest<ApiRow[]>('/catalogos/clientes'),
+  getTransportistas: () => apiRequest<ApiRow[]>('/catalogos/transportistas'),
 };
 
 // ==============================================================================
@@ -125,7 +133,7 @@ export const catalogosApi = {
 
 export const ordenesApi = {
   getAll: (idLinea?: number) =>
-    apiRequest<any[]>(idLinea ? `/ordenes?id_linea=${idLinea}` : '/ordenes'),
+    apiRequest<ApiRow[]>(idLinea ? `/ordenes?id_linea=${idLinea}` : '/ordenes'),
   create: (payload: {
     folio: string;
     id_cliente: number;
@@ -134,18 +142,37 @@ export const ordenesApi = {
     cantidad: number;
     fecha_compromiso: string;
     id_usuario_registro?: number;
+    id_linea_asignada?: number | null;
   }) =>
-    apiRequest<{ ok: boolean; mensaje?: string; data: any }>('/ordenes', {
+    apiRequest<ApiActionResponse>('/ordenes', {
       method: 'POST',
       body: JSON.stringify(payload),
     }),
-  importar: (payload: { csv?: string; ordenes?: any[]; id_usuario?: number }) =>
-    apiRequest<{ ok: boolean; mensaje?: string; total_importadas: number; data: any[] }>('/ordenes/importar', {
+  update: (
+    idOrden: number,
+    payload: {
+      folio?: string;
+      id_cliente?: number;
+      id_modelo?: number;
+      id_color?: number;
+      cantidad?: number;
+      fecha_compromiso?: string;
+      id_linea_asignada?: number | null;
+      estado?: string;
+      id_usuario?: number;
+    }
+  ) =>
+    apiRequest<ApiActionResponse>(`/ordenes/${idOrden}`, {
+      method: 'PATCH',
+      body: JSON.stringify(payload),
+    }),
+  importar: (payload: { csv?: string; ordenes?: ApiRow[]; id_usuario?: number }) =>
+    apiRequest<{ ok: boolean; mensaje?: string; total_importadas: number; data: ApiRow[] }>('/ordenes/importar', {
       method: 'POST',
       body: JSON.stringify(payload),
     }),
   asignarLinea: (idOrden: number, idLinea: number, idUsuario?: number) =>
-    apiRequest<{ ok: boolean; data: any }>(`/ordenes/${idOrden}/asignar-linea`, {
+    apiRequest<{ ok: boolean; data: ApiRow }>(`/ordenes/${idOrden}/asignar-linea`, {
       method: 'PATCH',
       body: JSON.stringify({ id_linea: idLinea, id_usuario: idUsuario }),
     }),
@@ -153,7 +180,9 @@ export const ordenesApi = {
 
 export const ensambleApi = {
   getRecientes: (idLinea?: number) =>
-    apiRequest<any[]>(idLinea ? `/ensamble/recientes?id_linea=${idLinea}` : '/ensamble/recientes'),
+    apiRequest<ApiRow[]>(idLinea ? `/ensamble/recientes?id_linea=${idLinea}` : '/ensamble/recientes'),
+  getDefectos: (idLinea?: number) =>
+    apiRequest<ApiRow[]>(idLinea ? `/ensamble/defectos?id_linea=${idLinea}` : '/ensamble/defectos'),
   registrarConteo: (payload: {
     id_orden: number;
     id_linea: number;
@@ -161,7 +190,7 @@ export const ensambleApi = {
     id_operador: number;
     cantidad: number;
   }) =>
-    apiRequest<any>('/ensamble/conteo', {
+    apiRequest<ApiActionResponse>('/ensamble/conteo', {
       method: 'POST',
       body: JSON.stringify(payload),
     }),
@@ -172,14 +201,14 @@ export const ensambleApi = {
     motivo: string;
     id_usuario?: number;
   }) =>
-    apiRequest<{ ok: boolean; mensaje?: string; data: any }>('/ensamble/defecto', {
+    apiRequest<ApiActionResponse>('/ensamble/defecto', {
       method: 'POST',
       body: JSON.stringify(payload),
     }),
 };
 
 export const pruebasApi = {
-  getRecientes: (limit = 50) => apiRequest<any[]>(`/pruebas/recientes?limit=${limit}`),
+  getRecientes: (limit = 50) => apiRequest<ApiRow[]>(`/pruebas/recientes?limit=${limit}`),
   evaluar: (payload: {
     id_orden: number;
     id_linea: number;
@@ -192,7 +221,7 @@ export const pruebasApi = {
     id_defecto?: number;
     descripcion_defecto?: string;
   }) =>
-    apiRequest<{ aprobado: boolean; numero_serie?: string | null; data?: any; unidad?: any; mensaje?: string }>(
+    apiRequest<{ aprobado: boolean; numero_serie?: string | null; data?: ApiRow; unidad?: ApiRow; mensaje?: string }>(
       '/pruebas/evaluar',
       {
         method: 'POST',
@@ -202,10 +231,11 @@ export const pruebasApi = {
 };
 
 export const unidadesApi = {
-  getRecientes: (limit = 100) => apiRequest<any[]>(`/unidades/recientes?limit=${limit}`),
-  getHistorial: (limit = 100) => apiRequest<any[]>(`/unidades/historial?limit=${limit}`),
+  getRecientes: (limit = 100) => apiRequest<ApiRow[]>(`/unidades/recientes?limit=${limit}`),
+  getInspecciones: (limit = 100) => apiRequest<ApiRow[]>(`/unidades/inspecciones?limit=${limit}`),
+  getHistorial: (limit = 100) => apiRequest<ApiRow[]>(`/unidades/historial?limit=${limit}`),
   getTrazabilidad: (numeroSerie: string) =>
-    apiRequest<any>(`/unidades/trazabilidad/${encodeURIComponent(numeroSerie)}`),
+    apiRequest<ApiRow>(`/unidades/trazabilidad/${encodeURIComponent(numeroSerie)}`),
   dictaminar: (payload: {
     numero_serie: string;
     id_estado_calidad: number;
@@ -214,7 +244,7 @@ export const unidadesApi = {
     comentarios?: string;
     motivo?: string;
   }) =>
-    apiRequest<{ ok: boolean; mensaje?: string; data: any }>('/unidades/calidad/dictamen', {
+    apiRequest<ApiActionResponse>('/unidades/calidad/dictamen', {
       method: 'POST',
       body: JSON.stringify(payload),
     }),
@@ -225,8 +255,8 @@ export const unidadesApi = {
 // ==============================================================================
 
 export const cajasApi = {
-  getAll: () => apiRequest<any[]>('/cajas'),
-  getById: (id: number) => apiRequest<any>(`/cajas/${id}`),
+  getAll: () => apiRequest<ApiRow[]>('/cajas'),
+  getById: (id: number) => apiRequest<ApiRow>(`/cajas/${id}`),
   create: (payload: {
     id_cliente: number;
     id_modelo: number;
@@ -234,29 +264,29 @@ export const cajasApi = {
     codigo_caja?: string;
     id_usuario_creador?: number;
   }) =>
-    apiRequest<{ ok: boolean; mensaje?: string; data: any }>('/cajas', {
+    apiRequest<ApiActionResponse>('/cajas', {
       method: 'POST',
       body: JSON.stringify(payload),
     }),
   empacarPorSerie: (payload: { id_caja: number; numero_serie: string; id_usuario?: number }) =>
-    apiRequest<any>('/cajas/empacar-serie', {
+    apiRequest<ApiActionResponse>('/cajas/empacar-serie', {
       method: 'POST',
       body: JSON.stringify(payload),
     }),
   cerrar: (idCaja: number, idUsuario?: number) =>
-    apiRequest<{ ok: boolean; mensaje?: string; data: any }>(`/cajas/${idCaja}/cerrar`, {
+    apiRequest<ApiActionResponse>(`/cajas/${idCaja}/cerrar`, {
       method: 'PATCH',
       body: JSON.stringify({ id_usuario: idUsuario }),
     }),
   retirarUnidad: (idCaja: number, payload: { id_unidad: number; id_usuario?: number; motivo: string }) =>
-    apiRequest<{ ok: boolean; mensaje?: string; data: any }>(`/cajas/${idCaja}/retirar-unidad`, {
+    apiRequest<ApiActionResponse>(`/cajas/${idCaja}/retirar-unidad`, {
       method: 'POST',
       body: JSON.stringify(payload),
     }),
 };
 
 export const embarquesApi = {
-  getAll: () => apiRequest<any[]>('/embarques'),
+  getAll: () => apiRequest<ApiRow[]>('/embarques'),
   create: (payload: {
     id_pedido: string;
     id_cliente: number;
@@ -267,29 +297,29 @@ export const embarquesApi = {
     observaciones?: string;
     id_usuario_creo?: number;
   }) =>
-    apiRequest<any>('/embarques', {
+    apiRequest<ApiRow>('/embarques', {
       method: 'POST',
       body: JSON.stringify(payload),
     }),
   asignarCaja: (payload: { id_embarque: number; id_caja: number; id_usuario?: number }) =>
-    apiRequest<{ ok: boolean; mensaje?: string; data: any }>('/embarques/asignar-caja', {
+    apiRequest<ApiActionResponse>('/embarques/asignar-caja', {
       method: 'POST',
       body: JSON.stringify(payload),
     }),
   retirarCaja: (payload: { id_embarque: number; id_caja: number; id_usuario?: number; motivo?: string }) =>
-    apiRequest<{ ok: boolean; mensaje?: string; data: any }>('/embarques/retirar-caja', {
+    apiRequest<ApiActionResponse>('/embarques/retirar-caja', {
       method: 'POST',
       body: JSON.stringify(payload),
     }),
   despachar: (idEmbarque: number, idUsuario?: number) =>
-    apiRequest<{ ok: boolean; mensaje?: string; data: any }>(`/embarques/${idEmbarque}/despachar`, {
+    apiRequest<ApiActionResponse>(`/embarques/${idEmbarque}/despachar`, {
       method: 'PATCH',
       body: JSON.stringify({ id_usuario: idUsuario }),
     }),
 };
 
 export const turnosApi = {
-  getCierres: (limit = 20) => apiRequest<any[]>(`/turnos/cierres?limit=${limit}`),
+  getCierres: (limit = 20) => apiRequest<ApiRow[]>(`/turnos/cierres?limit=${limit}`),
   consolidarCierre: (payload: {
     fecha?: string;
     id_turno: number;
@@ -297,7 +327,7 @@ export const turnosApi = {
     id_lider?: number;
     observaciones?: string;
   }) =>
-    apiRequest<any>('/turnos/cierre', {
+    apiRequest<ApiRow>('/turnos/cierre', {
       method: 'POST',
       body: JSON.stringify(payload),
     }),
@@ -305,14 +335,14 @@ export const turnosApi = {
 
 export const autorizacionesApi = {
   getAll: (estado?: string) =>
-    apiRequest<any[]>(estado ? `/autorizaciones?estado=${encodeURIComponent(estado)}` : '/autorizaciones'),
+    apiRequest<ApiRow[]>(estado ? `/autorizaciones?estado=${encodeURIComponent(estado)}` : '/autorizaciones'),
   solicitar: (payload: {
-    tipo: 'REAPERTURA_CAJA' | 'AJUSTE_CIERRE';
+    tipo: 'REAPERTURA_CAJA' | 'AJUSTE_CIERRE' | 'CORRECCION_CIERRE_TURNO';
     id_referencia: number;
     id_usuario_solicita?: number;
     motivo: string;
   }) =>
-    apiRequest<any>('/autorizaciones/solicitar', {
+    apiRequest<ApiRow>('/autorizaciones/solicitar', {
       method: 'POST',
       body: JSON.stringify(payload),
     }),
@@ -320,22 +350,22 @@ export const autorizacionesApi = {
     idSolicitud: number,
     payload: { estado: 'APROBADA' | 'RECHAZADA'; id_usuario_autoriza?: number; comentario_resolucion?: string }
   ) =>
-    apiRequest<any>(`/autorizaciones/${idSolicitud}/resolver`, {
+    apiRequest<ApiRow>(`/autorizaciones/${idSolicitud}/resolver`, {
       method: 'PATCH',
       body: JSON.stringify(payload),
     }),
 };
 
 export const adminApi = {
-  getParametros: () => apiRequest<any[]>('/parametros'),
+  getParametros: () => apiRequest<ApiRow[]>('/parametros'),
   updateParametro: (id: number, valor: string | number | boolean) =>
-    apiRequest<any>(`/parametros/${id}`, {
+    apiRequest<ApiRow>(`/parametros/${id}`, {
       method: 'PATCH',
       body: JSON.stringify({ valor }),
     }),
-  getBitacora: () => apiRequest<any[]>('/bitacora'),
+  getBitacora: () => apiRequest<ApiRow[]>('/bitacora'),
   createBitacora: (payload: { id_usuario: number; modulo: string; accion: string; motivo?: string }) =>
-    apiRequest<any>('/bitacora', {
+    apiRequest<ApiRow>('/bitacora', {
       method: 'POST',
       body: JSON.stringify(payload),
     }),

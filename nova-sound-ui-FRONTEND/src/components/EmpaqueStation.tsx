@@ -17,7 +17,9 @@ export default function EmpaqueStation() {
     cerrarCaja,
     solicitarReaperturaCaja,
     retirarUnidadCaja,
+    tienePermiso,
   } = usePlanta();
+  const puedeEmpacar = tienePermiso('EMPAQUE_OPERAR');
 
   const [subvista, setSubvista] = useState<'empacar' | 'consultar' | 'bitacora'>('empacar');
   const [filtroCaja, setFiltroCaja] = useState<string>('');
@@ -41,10 +43,12 @@ export default function EmpaqueStation() {
 
   const [mensaje, setMensaje] = useState<{ tipo: 'ok' | 'err'; texto: string } | null>(null);
 
-  const cajaActual = cajas.find((c) => c.id === cajaSeleccionadaId);
-  const detallesDeCaja = detallesCajas.filter((d) => d.id_caja === cajaSeleccionadaId && !d.retirada);
+  const cajaActual = cajas.find((c) => c.id === cajaSeleccionadaId) || cajas[0];
+  const detallesDeCaja = cajaActual
+    ? detallesCajas.filter((d) => d.id_caja === cajaActual.id && !d.retirada)
+    : [];
   const capacidad = cajaActual?.capacidad || 6;
-  const ocupacion = cajaActual?.piezas_actuales || detallesDeCaja.length;
+  const ocupacion = cajaActual ? detallesDeCaja.length || cajaActual.piezas_actuales || 0 : 0;
   const porcentaje = Math.min(100, Math.round((ocupacion / capacidad) * 100));
 
   const cajasFiltradas = cajas.filter((c) => {
@@ -78,11 +82,19 @@ export default function EmpaqueStation() {
 
   const handleCrearCaja = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!puedeEmpacar) {
+      setMensaje({ tipo: 'err', texto: 'Su rol actual es de solo lectura en Empaque (RN-14).' });
+      return;
+    }
     const res = await crearCaja(nuevoClienteId, nuevoModeloId, nuevoColorId);
     if (res.ok && res.caja) {
+      const cap =
+        res.caja.capacidad ??
+        CATALOGO_MODELOS.find((m) => m.id === nuevoModeloId)?.capacidad_caja ??
+        12;
       setCajaSeleccionadaId(res.caja.id);
       setModalNuevaCaja(false);
-      setMensaje({ tipo: 'ok', texto: `Caja ${res.caja.codigo_caja} abierta con capacidad de ${res.caja.capacidad} piezas` });
+      setMensaje({ tipo: 'ok', texto: `Caja ${res.caja.codigo_caja} abierta con capacidad de ${cap} piezas` });
     } else {
       setMensaje({ tipo: 'err', texto: res.error || 'Error al abrir caja' });
     }
@@ -90,6 +102,10 @@ export default function EmpaqueStation() {
 
   const handleEmpacar = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!puedeEmpacar) {
+      setMensaje({ tipo: 'err', texto: 'Su rol actual es de solo lectura en Empaque (RN-14).' });
+      return;
+    }
     if (!cajaActual) return;
     if (!serieInput.trim()) {
       setMensaje({ tipo: 'err', texto: 'Ingrese un número de serie' });
@@ -105,6 +121,10 @@ export default function EmpaqueStation() {
   };
 
   const handleCerrar = async () => {
+    if (!puedeEmpacar) {
+      setMensaje({ tipo: 'err', texto: 'Su rol actual es de solo lectura en Empaque (RN-14).' });
+      return;
+    }
     if (!cajaActual) return;
     const res = await cerrarCaja(cajaActual.id);
     if (res.ok) {
@@ -153,7 +173,7 @@ export default function EmpaqueStation() {
           </div>
         </div>
         <div className="station-header-right">
-          <button onClick={() => setModalNuevaCaja(true)} className="btn btn-yellow">
+          <button onClick={() => setModalNuevaCaja(true)} disabled={!puedeEmpacar} className="btn btn-yellow">
             + ABRIR NUEVA CAJA
           </button>
         </div>
@@ -182,7 +202,7 @@ export default function EmpaqueStation() {
             type="button"
             onClick={() => setSubvista('empacar')}
             className={`btn ${subvista === 'empacar' ? 'btn-yellow' : 'btn-outline'}`}
-            style={{ height: '3.2rem', justifyContent: 'space-between', padding: '0 1.25rem' }}
+            style={{ minHeight: '3.2rem', height: 'auto', justifyContent: 'space-between', padding: '0.6rem 1rem', gap: '0.5rem', flexWrap: 'wrap' }}
           >
             <span>01 · CREAR CAJA / EMPACAR</span>
             <span className="badge badge-dark">{cajas.filter((c) => c.estado === 'Abierta').length} ABIERTAS</span>
@@ -191,7 +211,7 @@ export default function EmpaqueStation() {
             type="button"
             onClick={() => setSubvista('consultar')}
             className={`btn ${subvista === 'consultar' ? 'btn-yellow' : 'btn-outline'}`}
-            style={{ height: '3.2rem', justifyContent: 'space-between', padding: '0 1.25rem' }}
+            style={{ minHeight: '3.2rem', height: 'auto', justifyContent: 'space-between', padding: '0.6rem 1rem', gap: '0.5rem', flexWrap: 'wrap' }}
           >
             <span>02 · CONSULTAR CAJAS</span>
             <span className="badge badge-dark">{cajas.length} TOTAL</span>
@@ -200,7 +220,7 @@ export default function EmpaqueStation() {
             type="button"
             onClick={() => setSubvista('bitacora')}
             className={`btn ${subvista === 'bitacora' ? 'btn-yellow' : 'btn-outline'}`}
-            style={{ height: '3.2rem', justifyContent: 'space-between', padding: '0 1.25rem' }}
+            style={{ minHeight: '3.2rem', height: 'auto', justifyContent: 'space-between', padding: '0.6rem 1rem', gap: '0.5rem', flexWrap: 'wrap' }}
           >
             <span>03 · BITÁCORA</span>
             <span className="badge badge-dark">{cajas.filter((c) => c.estado === 'Cerrada').length} CERRADAS</span>
@@ -494,13 +514,13 @@ export default function EmpaqueStation() {
               </div>
               <div style={{ gridColumn: 'span 5', display: 'flex', justifyContent: 'space-between', gap: '0.75rem', marginTop: '0.25rem' }}>
                 <div style={{ display: 'flex', gap: '0.5rem' }}>
-                  <button type="submit" className="btn btn-yellow">
+                  <button type="submit" disabled={!puedeEmpacar} className="btn btn-yellow">
                     CREAR CAJA
                   </button>
                   <button
                     type="button"
                     onClick={handleCerrar}
-                    disabled={!cajaActual || ocupacion === 0 || cajaActual.estado === 'Cerrada'}
+                    disabled={!puedeEmpacar || !cajaActual || ocupacion === 0 || cajaActual.estado === 'Cerrada'}
                     className="btn btn-carbon"
                   >
                     CERRAR CAJA E IMPRIMIR ETIQUETA
@@ -537,7 +557,7 @@ export default function EmpaqueStation() {
                 <label className="form-label">CAJA EN BANCO DE EMPAQUE</label>
                 <select
                   className="form-select"
-                  value={cajaSeleccionadaId}
+                  value={cajaActual?.id || cajaSeleccionadaId}
                   onChange={(e) => setCajaSeleccionadaId(Number(e.target.value))}
                 >
                   {cajas.map((c) => (
@@ -631,7 +651,7 @@ export default function EmpaqueStation() {
                     </span>
                   </div>
 
-                  <button type="submit" className="btn btn-yellow" style={{ height: '3.2rem', fontSize: '0.95rem' }}>
+                  <button type="submit" disabled={!puedeEmpacar} className="btn btn-yellow" style={{ height: '3.2rem', fontSize: '0.95rem' }}>
                     EMPACAR EN CAJA ({ocupacion + 1} DE {capacidad})
                   </button>
 
@@ -639,7 +659,7 @@ export default function EmpaqueStation() {
                     <button
                       type="button"
                       onClick={handleCerrar}
-                      disabled={ocupacion === 0}
+                      disabled={!puedeEmpacar || ocupacion === 0}
                       className="btn btn-carbon"
                       style={{ flex: 1 }}
                     >
@@ -647,6 +667,7 @@ export default function EmpaqueStation() {
                     </button>
                     <button
                       type="button"
+                      disabled={!puedeEmpacar}
                       onClick={() => setModalReapertura(true)}
                       className="btn btn-outline"
                     >
@@ -707,6 +728,7 @@ export default function EmpaqueStation() {
                       {cajaActual?.estado === 'Abierta' && (
                         <button
                           type="button"
+                          disabled={!puedeEmpacar}
                           onClick={() => {
                             setSerieRetirar(det.numero_serie);
                             setModalRetiro(true);
@@ -792,7 +814,7 @@ export default function EmpaqueStation() {
                 <button type="button" onClick={() => setModalNuevaCaja(false)} className="btn btn-outline">
                   CANCELAR
                 </button>
-                <button type="submit" className="btn btn-yellow">
+                <button type="submit" disabled={!puedeEmpacar} className="btn btn-yellow">
                   ABRIR CAJA
                 </button>
               </div>

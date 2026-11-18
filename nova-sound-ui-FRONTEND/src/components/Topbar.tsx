@@ -53,6 +53,8 @@ export default function Topbar({
         display: 'flex',
         flexDirection: 'column',
         borderBottom: '1px solid var(--border-subtle)',
+        minWidth: 0,
+        width: '100%',
       }}
     >
       {/* 0. BANNER DE MANTENIMIENTO */}
@@ -279,6 +281,8 @@ export default function Topbar({
           padding: '6px 20px',
           backgroundColor: '#faf9f6',
           overflowX: 'auto',
+          minWidth: 0,
+          width: '100%',
         }}
       >
         {openTabIds
@@ -293,6 +297,7 @@ export default function Topbar({
                 style={{
                   display: 'inline-flex',
                   alignItems: 'center',
+                  flexShrink: 0,
                   backgroundColor: activo ? '#ffffff' : 'transparent',
                   border: activo ? '1px solid var(--border-subtle)' : '1px solid transparent',
                   borderRadius: '8px',

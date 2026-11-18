@@ -14,7 +14,9 @@ export default function TurnosStation() {
     unidades,
     detallesCajas,
     embarques,
+    tienePermiso,
   } = usePlanta();
+  const puedeCerrarTurno = tienePermiso('TURNO_CERRAR');
 
   const [observacionesCierre, setObservacionesCierre] = useState<string>('');
   const [modalCorreccion, setModalCorreccion] = useState<boolean>(false);
@@ -25,14 +27,14 @@ export default function TurnosStation() {
   // Métricas del turno activo en vivo
   const piezasEnsambladas = conteosEnsamble
     .filter((c) => c.id_linea === sesion.linea.id && c.id_turno === sesion.turno.id)
-    .reduce((sum, c) => sum + c.cantidad, 0) || 48;
+    .reduce((sum, c) => sum + c.cantidad, 0);
 
-  const piezasProbadas = pruebasFuncionales.filter((p) => p.id_linea === sesion.linea.id && p.id_turno === sesion.turno.id).length || 45;
-  const piezasLiberadas = unidades.filter((u) => u.id_linea === sesion.linea.id && u.id_turno === sesion.turno.id && u.id_estado_calidad === 1).length || 42;
-  const piezasRetrabajo = unidades.filter((u) => u.id_linea === sesion.linea.id && u.id_turno === sesion.turno.id && u.id_estado_calidad === 2).length || 2;
-  const piezasRetencion = unidades.filter((u) => u.id_linea === sesion.linea.id && u.id_turno === sesion.turno.id && u.id_estado_calidad === 3).length || 1;
-  const piezasEmpacadas = detallesCajas.filter((d) => !d.retirada).length || 8;
-  const piezasEmbarcadas = embarques.filter((e) => e.estado === 'Despachado').reduce((sum, e) => sum + (e.total_piezas || 0), 0) || 6;
+  const piezasProbadas = pruebasFuncionales.filter((p) => p.id_linea === sesion.linea.id && p.id_turno === sesion.turno.id).length;
+  const piezasLiberadas = unidades.filter((u) => u.id_linea === sesion.linea.id && u.id_turno === sesion.turno.id && u.id_estado_calidad === 1).length;
+  const piezasRetrabajo = unidades.filter((u) => u.id_linea === sesion.linea.id && u.id_turno === sesion.turno.id && u.id_estado_calidad === 2).length;
+  const piezasRetencion = unidades.filter((u) => u.id_linea === sesion.linea.id && u.id_turno === sesion.turno.id && u.id_estado_calidad === 3).length;
+  const piezasEmpacadas = detallesCajas.filter((d) => !d.retirada).length;
+  const piezasEmbarcadas = embarques.filter((e) => e.estado === 'Despachado').reduce((sum, e) => sum + (e.total_piezas || 0), 0);
 
   // INCIDENTE A: Balance y diferencias por etapa
   const diferenciaEnsamblePrueba = piezasEnsambladas - piezasProbadas;
@@ -40,6 +42,10 @@ export default function TurnosStation() {
 
   const handleConsolidar = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!puedeCerrarTurno) {
+      setMensaje({ tipo: 'err', texto: 'Su rol actual no tiene permiso para consolidar cierres de turno (RN-14).' });
+      return;
+    }
     const res = await consolidarCierreTurno(observacionesCierre);
     if (res.ok) {
       setMensaje({ tipo: 'ok', texto: `Cierre formal de turno consolidado exitosamente` });
@@ -196,7 +202,7 @@ export default function TurnosStation() {
                   />
                 </div>
 
-                <button type="submit" className="btn btn-yellow" style={{ height: '3.2rem', fontSize: '0.95rem' }}>
+                <button type="submit" disabled={!puedeCerrarTurno} className="btn btn-yellow" style={{ height: '3.2rem', fontSize: '0.95rem' }}>
                   CONSOLIDAR Y FIRMAR CIERRE FORMAL DEL TURNO
                 </button>
               </form>

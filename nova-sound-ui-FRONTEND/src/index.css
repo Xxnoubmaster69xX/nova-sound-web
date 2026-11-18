@@ -783,6 +783,16 @@ html, body {
   background-color: rgba(24, 26, 31, 0.025);
 }
 
+.tech-table-compact thead th {
+  padding: 8px 9px;
+  font-size: 11px;
+}
+
+.tech-table-compact tbody td {
+  padding: 9px 9px;
+  font-size: 12px;
+}
+
 /* ==============================================================================
    FORMULARIOS & INPUTS
    ============================================================================== */
@@ -965,6 +975,20 @@ select.form-select {
   background-color: var(--carbon-900);
   border-color: var(--carbon-900);
   color: #ffffff;
+}
+
+.tech-check-card.failed {
+  border-color: rgba(220, 38, 38, 0.55);
+  background-color: rgba(220, 38, 38, 0.08);
+}
+
+.tech-check-card.failed .tech-check-indicator {
+  background-color: var(--color-danger);
+  border-color: var(--color-danger);
+  color: #ffffff;
+  width: auto;
+  min-width: 44px;
+  padding: 0 6px;
 }
 
 /* ==============================================================================

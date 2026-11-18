@@ -196,4 +196,94 @@ export class OrdenesRepository {
 
     return actualizada;
   }
+
+  async update(
+    idOrden: number,
+    data: {
+      folio?: string;
+      id_cliente?: number;
+      id_modelo?: number;
+      id_color?: number;
+      cantidad?: number;
+      fecha_compromiso?: string;
+      id_linea_asignada?: number | null;
+      estado?: string;
+      id_usuario: number;
+    }
+  ): Promise<Orden | null> {
+    const prev = await this.getById(idOrden);
+    if (!prev) return null;
+
+    const idLinea = data.id_linea_asignada !== undefined ? data.id_linea_asignada : prev.id_linea_asignada;
+    const estado = data.estado || (idLinea && prev.estado === 'Programada' ? 'En Proceso' : prev.estado);
+    const fechaPrev =
+      (prev.fecha_compromiso as unknown) instanceof Date
+        ? (prev.fecha_compromiso as unknown as Date).toISOString().slice(0, 10)
+        : String(prev.fecha_compromiso).slice(0, 10);
+    const fechaCompromiso = data.fecha_compromiso ? String(data.fecha_compromiso).slice(0, 10) : fechaPrev;
+
+    const query = `
+      UPDATE ordenes
+      SET folio = $1,
+          id_cliente = $2,
+          id_modelo = $3,
+          id_color = $4,
+          cantidad = $5,
+          fecha_compromiso = $6,
+          id_linea_asignada = $7::int,
+          estado = $8,
+          id_usuario_asigno = CASE WHEN $7::int IS NOT NULL THEN $9::int ELSE id_usuario_asigno END,
+          fecha_asignacion = CASE WHEN $7::int IS NOT NULL AND fecha_asignacion IS NULL THEN CURRENT_TIMESTAMP ELSE fecha_asignacion END
+      WHERE id = $10
+      RETURNING *;
+    `;
+    const res = await pool.query(query, [
+      data.folio ?? prev.folio,
+      data.id_cliente ?? prev.id_cliente,
+      data.id_modelo ?? prev.id_modelo,
+      data.id_color ?? prev.id_color,
+      data.cantidad ?? prev.cantidad,
+      fechaCompromiso,
+      idLinea ?? null,
+      estado,
+      data.id_usuario,
+      idOrden,
+    ]);
+    const actualizada = res.rows[0] || null;
+
+    if (actualizada) {
+      await pool.query(
+        `INSERT INTO historial_ordenes (id_orden, id_usuario, accion, estado_anterior, estado_nuevo, comentario)
+         VALUES ($1, $2, $3, $4, $5, $6)`,
+        [idOrden, data.id_usuario, 'Edición de Orden', prev.estado, estado, `Orden ${actualizada.folio} actualizada`]
+      );
+
+      await pool.query(
+        `INSERT INTO bitacora (id_usuario, modulo, accion, entidad, id_registro_afectado, valor_anterior, valor_nuevo, motivo)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+        [
+          data.id_usuario,
+          'Órdenes',
+          `Edición de orden ${actualizada.folio}`,
+          'ordenes',
+          idOrden,
+          JSON.stringify({
+            folio: prev.folio,
+            cantidad: prev.cantidad,
+            id_linea_asignada: prev.id_linea_asignada,
+            estado: prev.estado,
+          }),
+          JSON.stringify({
+            folio: actualizada.folio,
+            cantidad: actualizada.cantidad,
+            id_linea_asignada: actualizada.id_linea_asignada,
+            estado: actualizada.estado,
+          }),
+          'Actualización de orden de producción',
+        ]
+      );
+    }
+
+    return actualizada;
+  }
 }

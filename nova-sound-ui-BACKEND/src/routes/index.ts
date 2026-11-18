@@ -52,6 +52,7 @@ apiRouter.get('/health', async (_req, res) => {
 // ==============================================================================
 apiRouter.post('/ensamble/conteo', requirePermission('ENSAMBLE_REGISTRAR'), EnsambleController.registrarConteo);
 apiRouter.get('/ensamble/recientes', EnsambleController.getRecientes);
+apiRouter.get('/ensamble/defectos', EnsambleController.getDefectos);
 apiRouter.post('/ensamble/defecto', requirePermission('ENSAMBLE_REGISTRAR'), EnsambleController.registrarDefecto);
 
 // ==============================================================================
@@ -81,6 +82,8 @@ apiRouter.post('/cajas/:id/retirar-unidad', requirePermission('EMPAQUE_AUTORIZAR
 apiRouter.get('/ordenes', OrdenesController.getAll);
 apiRouter.post('/ordenes', requirePermission('ORDENES_GESTIONAR'), OrdenesController.create);
 apiRouter.post('/ordenes/importar', requirePermission('ORDENES_GESTIONAR'), OrdenesController.importar);
+apiRouter.patch('/ordenes/:id', requirePermission('ORDENES_GESTIONAR'), OrdenesController.update);
+apiRouter.put('/ordenes/:id', requirePermission('ORDENES_GESTIONAR'), OrdenesController.update);
 apiRouter.patch('/ordenes/:id/asignar-linea', requirePermission('ORDENES_GESTIONAR'), OrdenesController.asignarLinea);
 apiRouter.get('/objetivos', ReportesController.getObjetivos);
 apiRouter.post('/objetivos', requirePermission('ORDENES_GESTIONAR'), ReportesController.upsertObjetivo);

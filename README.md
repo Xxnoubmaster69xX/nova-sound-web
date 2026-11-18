@@ -1,7 +1,7 @@
 # Nova Sound MES — Sistema de Manufactura y Control de Calidad
 
-[![Estado](https://img.shields.io/badge/Rama-v8%2Flayout--original-f59e0b?style=flat-square)](#)
-[![Demo](https://img.shields.io/badge/Cloudflare_Pages-nova--sound--v8-orange?style=flat-square)](https://nova-sound-v8.pages.dev)
+[![Estado](https://img.shields.io/badge/Rama-v9%2Fajustes-f59e0b?style=flat-square)](#)
+[![Demo](https://img.shields.io/badge/Cloudflare_Pages-nova--sound--v9-orange?style=flat-square)](https://nova-sound-v9.pages.dev)
 [![Node.js](https://img.shields.io/badge/Node.js-v18+-green?style=flat-square&logo=node.js)](https://nodejs.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.7+-blue?style=flat-square&logo=typescript)](https://www.typescriptlang.org/)
 [![React](https://img.shields.io/badge/React-19-61dafb?style=flat-square&logo=react)](https://react.dev/)
@@ -10,43 +10,65 @@
 [![Vitest](https://img.shields.io/badge/Tests-Vitest-yellow?style=flat-square&logo=vitest)](https://vitest.dev/)
 [![Audit](https://img.shields.io/badge/Auditor%C3%ADa_Caso-100%25_Cumplido-brightgreen?style=flat-square)](./CHANGELOG_AUDITORIA.md)
 
-> ### Versión v8 (`v8/layout-original`)
-> - **Demo en vivo (Cloudflare Pages):** https://nova-sound-v8.pages.dev (modo demo offline con 722 registros operativos en `src/data/seedOperacion.ts`, contraseña oficial `123456`).
-> - **Alineación con bocetos del semestre:** Cada estación está empatada 1-a-1 con las 19 vistas extraídas en [`docs/bocetos_pdf/`](./docs/bocetos_pdf/) y documentadas en [`MAPEO_VENTANAS_PDF_V8.md`](./MAPEO_VENTANAS_PDF_V8.md), manteniendo Topbar, Sidebar, estética HMI/Endfield, backend y base de datos en [`database/`](./database/).
+> ### Versión v9 (`v9/ajustes`)
+> - **Demo en vivo (Cloudflare Pages):** https://nova-sound-v9.pages.dev (modo demo offline con 722 registros operativos en `src/data/seedOperacion.ts`, usuario `admin_ns`, contraseña oficial `123456`).
+> - **Rediseño v9 Soft New-Tech y ajustes:** Mantiene Topbar, Sidebar retráctil tipo cortina en 14 franjas, estética HMI/Endfield, backend y base de datos en [`database/`](./database/), alineado con las vistas documentadas en [`MAPEO_VENTANAS_PDF_V8.md`](./MAPEO_VENTANAS_PDF_V8.md) y [`docs/bocetos_pdf/`](./docs/bocetos_pdf/).
 
 Sistema integral de **Ejecución de Manufactura (MES / SCADA Industrial)** desarrollado para la trazabilidad completa, control de calidad bajo protocolo **ISO-9001**, empaque por contenedores, despacho logístico y auditoría en tiempo real para líneas de producción de bocinas inteligentes Nova Sound.
 
 ---
 
-## Capturas de Pantalla (Vista Previa Beta)
+## Capturas de Pantalla (20 Vistas de la Aplicación)
 
 ### Acceso y Centro de Telemetría
-| Inicio de Sesión HMI / MES | Centro de Telemetría y Operaciones |
+| 01 · Inicio de Sesión HMI / MES | 02 · Centro de Telemetría y Operaciones |
 | :---: | :---: |
 | ![Login](docs/screenshots/01-login.png) | ![Inicio](docs/screenshots/02-inicio.png) |
 
 ### Piso de Producción y Calidad
-| 01 · Órdenes de Producción | 02 · Ensamble (Conteo) |
+| 03 · Órdenes de Producción | 04 · Ensamble (Conteo) |
 | :---: | :---: |
 | ![Órdenes](docs/screenshots/03-ordenes.png) | ![Ensamble](docs/screenshots/04-ensamble.png) |
 
-| 03 · Prueba Funcional (Nacimiento de Serie) | 04 · Inspección de Calidad |
+| 05 · Prueba Funcional (Nacimiento de Serie) | 06 · Inspección de Calidad |
 | :---: | :---: |
 | ![Pruebas](docs/screenshots/05-pruebas.png) | ![Calidad](docs/screenshots/06-calidad.png) |
 
-### Empaque, Logística y Trazabilidad
-| 05 · Empaque y Cajas | 06 · Embarques y Despacho |
+### Empaque y Cajas
+| 07 · Empaque — Crear Caja / Empacar | 08 · Empaque — Consultar Cajas |
 | :---: | :---: |
-| ![Empaque](docs/screenshots/07-empaque.png) | ![Embarques](docs/screenshots/08-embarques.png) |
+| ![Empaque Crear](docs/screenshots/07-empaque-crear.png) | ![Empaque Consultar](docs/screenshots/08-empaque-consultar.png) |
 
-| 07 · Trazabilidad 360° por Serie | 08 · Cierres de Turno |
+| 09 · Empaque — Bitácora | |
 | :---: | :---: |
-| ![Trazabilidad](docs/screenshots/09-trazabilidad.png) | ![Turnos](docs/screenshots/10-turnos.png) |
+| ![Empaque Bitácora](docs/screenshots/09-empaque-bitacora.png) | |
 
-### Analítica y Administración
-| 09 · Reportes e Indicadores | 10 · Configuración y Seguridad |
+### Embarques, Trazabilidad y Turnos
+| 10 · Embarques — Lista y KPIs | 11 · Embarques — Detalle de Embarque |
 | :---: | :---: |
-| ![Reportes](docs/screenshots/11-reportes.png) | ![Configuración](docs/screenshots/12-configuracion.png) |
+| ![Embarques Lista](docs/screenshots/10-embarques-lista.png) | ![Embarques Detalle](docs/screenshots/11-embarques-detalle.png) |
+
+| 12 · Trazabilidad 360° por Serie | 13 · Cierres de Turno |
+| :---: | :---: |
+| ![Trazabilidad](docs/screenshots/12-trazabilidad.png) | ![Turnos](docs/screenshots/13-turnos.png) |
+
+### Analítica y Reportes
+| 14 · Reportes e Indicadores (Pareto) | |
+| :---: | :---: |
+| ![Reportes](docs/screenshots/14-reportes.png) | |
+
+### Administración y Sistema
+| 15 · Sistema — Dashboard / Monitoreo | 16 · Sistema — Gestión de Usuarios |
+| :---: | :---: |
+| ![Sistema Dashboard](docs/screenshots/15-sistema-dashboard.png) | ![Sistema Usuarios](docs/screenshots/16-sistema-usuarios.png) |
+
+| 17 · Sistema — Catálogos Maestros | 18 · Sistema — Configuración Parámetros |
+| :---: | :---: |
+| ![Sistema Catálogos](docs/screenshots/17-sistema-catalogos.png) | ![Sistema Parámetros](docs/screenshots/18-sistema-parametros.png) |
+
+| 19 · Sistema — Bitácora / Auditoría | 20 · Sistema — Respaldos Manual |
+| :---: | :---: |
+| ![Sistema Bitácora](docs/screenshots/19-sistema-bitacora.png) | ![Sistema Respaldos](docs/screenshots/20-sistema-respaldos.png) |
 
 ---
 

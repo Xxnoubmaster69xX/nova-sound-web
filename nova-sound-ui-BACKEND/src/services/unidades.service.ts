@@ -111,6 +111,10 @@ export class UnidadesService {
     return this.repo.getRecientes(limit);
   }
 
+  async getInspecciones(limit = 100) {
+    return this.repo.getInspecciones(limit);
+  }
+
   async getHistorial(limit = 10) {
     return this.repo.getHistorial(limit);
   }

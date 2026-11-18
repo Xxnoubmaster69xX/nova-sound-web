@@ -4,20 +4,32 @@ export class EmbarquesRepository {
   async getAll() {
     const query = `
       SELECT e.*, 
+             p.folio as folio_pedido,
              c.nombre_cliente, 
              t.nombre as transportista_nombre, 
              t.rfc as transportista_rfc, 
              t.telefono as transportista_telefono,
              u.nombre_completo as usuario_creo_nombre,
              u_conf.nombre_completo as usuario_confirmo_nombre,
-             COUNT(ec.id) FILTER (WHERE ec.fecha_retiro IS NULL) as total_cajas_cargadas
+             COUNT(ec.id) FILTER (WHERE ec.fecha_retiro IS NULL)::int as total_cajas,
+             COUNT(ec.id) FILTER (WHERE ec.fecha_retiro IS NULL) as total_cajas_cargadas,
+             COALESCE(ARRAY_AGG(ec.id_caja) FILTER (WHERE ec.fecha_retiro IS NULL AND ec.id_caja IS NOT NULL), '{}') as cajas,
+             COALESCE(ep.total_piezas, 0)::int as total_piezas
       FROM embarque e
+      LEFT JOIN pedido p ON e.id_pedido = p.id
       LEFT JOIN clientes c ON e.id_cliente = c.id
       LEFT JOIN transportista t ON e.id_transportista = t.id
       LEFT JOIN usuarios u ON e.id_usuario_creo = u.id
       LEFT JOIN usuarios u_conf ON e.id_usuario_confirmo = u_conf.id
       LEFT JOIN embarque_caja ec ON e.id = ec.id_embarque AND ec.fecha_retiro IS NULL
-      GROUP BY e.id, c.nombre_cliente, t.nombre, t.rfc, t.telefono, u.nombre_completo, u_conf.nombre_completo
+      LEFT JOIN (
+        SELECT ec_sub.id_embarque, COUNT(dc_sub.id)::int as total_piezas
+        FROM embarque_caja ec_sub
+        JOIN detalle_caja dc_sub ON ec_sub.id_caja = dc_sub.id_caja AND dc_sub.activo = TRUE
+        WHERE ec_sub.fecha_retiro IS NULL
+        GROUP BY ec_sub.id_embarque
+      ) ep ON e.id = ep.id_embarque
+      GROUP BY e.id, p.folio, c.nombre_cliente, t.nombre, t.rfc, t.telefono, u.nombre_completo, u_conf.nombre_completo, ep.total_piezas
       ORDER BY e.id DESC;
     `;
     const res = await pool.query(query);
@@ -27,9 +39,11 @@ export class EmbarquesRepository {
   async getById(id: number) {
     const query = `
       SELECT e.*, 
+             p.folio as folio_pedido,
              c.nombre_cliente, 
              t.nombre as transportista_nombre
       FROM embarque e
+      LEFT JOIN pedido p ON e.id_pedido = p.id
       LEFT JOIN clientes c ON e.id_cliente = c.id
       LEFT JOIN transportista t ON e.id_transportista = t.id
       WHERE e.id = $1;
@@ -39,14 +53,53 @@ export class EmbarquesRepository {
   }
 
   async create(data: {
-    referencia_embarque: string;
-    id_pedido?: number;
+    referencia_embarque?: string;
+    id_pedido?: number | string;
     id_cliente: number;
     id_transportista: number;
     fecha_programada: string;
-    observaciones: string;
+    observaciones?: string;
     id_usuario_creo: number;
   }) {
+    let referencia = data.referencia_embarque ? String(data.referencia_embarque).trim() : '';
+    if (!referencia) {
+      const refRes = await pool.query('SELECT id FROM embarque ORDER BY id DESC LIMIT 1;');
+      const nextId = refRes.rows.length > 0 ? Number(refRes.rows[0].id) + 1 : 1;
+      referencia = `EMB-2026-${String(nextId).padStart(3, '0')}`;
+    }
+
+    let resolvedIdPedido = 1;
+    let folioPedido: string | null = null;
+    if (data.id_pedido !== undefined && data.id_pedido !== null && String(data.id_pedido).trim() !== '') {
+      const rawPedido = String(data.id_pedido).trim();
+      if (!isNaN(Number(rawPedido)) && Number(rawPedido) > 0) {
+        resolvedIdPedido = Number(rawPedido);
+      } else {
+        folioPedido = rawPedido;
+        const foundPedido = await pool.query(
+          'SELECT id FROM pedido WHERE UPPER(folio) = UPPER($1) LIMIT 1;',
+          [rawPedido]
+        );
+        if (foundPedido.rows.length > 0) {
+          resolvedIdPedido = Number(foundPedido.rows[0].id);
+        } else {
+          const insertedPedido = await pool.query(
+            `INSERT INTO pedido (folio, id_cliente, fecha_pedido, fecha_compromiso, estado)
+             VALUES ($1, $2, CURRENT_DATE, CURRENT_DATE + 7, 'En Producción')
+             ON CONFLICT (folio) DO UPDATE SET folio = EXCLUDED.folio
+             RETURNING id;`,
+            [rawPedido, data.id_cliente]
+          );
+          resolvedIdPedido = Number(insertedPedido.rows[0].id);
+        }
+      }
+    }
+
+    const rawFecha = String(data.fecha_programada || new Date().toISOString()).trim();
+    const fechaProgramada = /^\d{4}-\d{2}-\d{2}/.test(rawFecha)
+      ? rawFecha.slice(0, 10)
+      : new Date().toISOString().slice(0, 10);
+
     const query = `
       INSERT INTO embarque (
         referencia_embarque, id_pedido, id_cliente, id_transportista,
@@ -56,11 +109,11 @@ export class EmbarquesRepository {
       RETURNING *;
     `;
     const res = await pool.query(query, [
-      data.referencia_embarque,
-      data.id_pedido || 1,
+      referencia,
+      resolvedIdPedido,
       data.id_cliente,
       data.id_transportista,
-      data.fecha_programada,
+      fechaProgramada,
       data.observaciones || 'Embarque regular',
       data.id_usuario_creo,
     ]);
@@ -88,7 +141,13 @@ export class EmbarquesRepository {
       ]
     );
 
-    return nuevo;
+    return {
+      ...nuevo,
+      ...(folioPedido ? { folio_pedido: folioPedido } : {}),
+      cajas: [],
+      total_cajas: 0,
+      total_piezas: 0,
+    };
   }
 
   // INC-C / F-11: Consultar si existen unidades no liberadas (o pendientes de Calidad) en el embarque

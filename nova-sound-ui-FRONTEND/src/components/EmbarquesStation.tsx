@@ -15,7 +15,9 @@ export default function EmbarquesStation() {
     asignarCajaEmbarque,
     retirarCajaEmbarque,
     despacharEmbarque,
+    tienePermiso,
   } = usePlanta();
+  const puedeEmbarcar = tienePermiso('EMBARQUE_OPERAR');
 
   const [embarqueSeleccionadoId, setEmbarqueSeleccionadoId] = useState<number>(embarques[0]?.id || 1);
   const [modalNuevo, setModalNuevo] = useState<boolean>(false);
@@ -47,7 +49,7 @@ export default function EmbarquesStation() {
 
   const [mensaje, setMensaje] = useState<{ tipo: 'ok' | 'err'; texto: string } | null>(null);
 
-  const embarqueBase = embarques.find((e) => e.id === embarqueSeleccionadoId);
+  const embarqueBase = embarques.find((e) => e.id === embarqueSeleccionadoId) || embarques[0];
   const edicionActiva = embarqueBase ? edicionesLocal[embarqueBase.id] : undefined;
   const embarqueActual = embarqueBase
     ? {
@@ -105,7 +107,7 @@ export default function EmbarquesStation() {
     setModalEditar(false);
     setMensaje({ tipo: 'ok', texto: `Cambios guardados en embarque ${editRef}` });
   };
-  const cajasAsignadasIds = cajasAsignadasEmbarque[embarqueSeleccionadoId] || [];
+  const cajasAsignadasIds = embarqueActual ? cajasAsignadasEmbarque[embarqueActual.id] || [] : [];
   const cajasAsignadas = cajas.filter((c) => cajasAsignadasIds.includes(c.id));
 
   // Cajas cerradas disponibles SOLO para el cliente del embarque seleccionado (P-27)
@@ -119,6 +121,10 @@ export default function EmbarquesStation() {
 
   const handleCrear = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!puedeEmbarcar) {
+      setMensaje({ tipo: 'err', texto: 'Su rol actual es de solo lectura en Embarques (RN-14).' });
+      return;
+    }
     const res = await crearEmbarque(pedido, idCliente, idTransportista, chofer, placas, fechaProg, obs);
     if (res.ok && res.embarque) {
       setEmbarqueSeleccionadoId(res.embarque.id);
@@ -174,7 +180,7 @@ export default function EmbarquesStation() {
           </div>
         </div>
         <div className="station-header-right">
-          <button onClick={() => setModalNuevo(true)} className="btn btn-yellow">
+          <button onClick={() => setModalNuevo(true)} disabled={!puedeEmbarcar} className="btn btn-yellow">
             + PROGRAMAR EMBARQUE
           </button>
         </div>
@@ -304,8 +310,10 @@ export default function EmbarquesStation() {
                 </thead>
                 <tbody>
                   {embarquesFiltrados.map((e) => {
-                    const countCajas = (cajasAsignadasEmbarque[e.id] || []).length;
-                    const seleccionado = e.id === embarqueSeleccionadoId;
+                    const countCajas = cajasAsignadasEmbarque[e.id]
+                      ? cajasAsignadasEmbarque[e.id].length
+                      : e.total_cajas || 0;
+                    const seleccionado = e.id === embarqueActual?.id;
                     const ed = edicionesLocal[e.id];
                     const estadoVis = canceladosLocal.includes(e.id) ? 'Cancelado' : e.estado;
                     return (
@@ -340,6 +348,7 @@ export default function EmbarquesStation() {
                             </button>
                             <button
                               type="button"
+                              disabled={!puedeEmbarcar}
                               className="btn btn-outline"
                               style={{ height: '1.8rem', padding: '0 0.55rem', fontSize: '0.65rem' }}
                               onClick={() => abrirModalEditar(e.id)}
@@ -371,6 +380,7 @@ export default function EmbarquesStation() {
                 {embarqueActual.estado !== 'Despachado' && (
                   <button
                     type="button"
+                    disabled={!puedeEmbarcar}
                     onClick={() => {
                       setCanceladosLocal((prev) =>
                         prev.includes(embarqueActual.id) ? prev : [...prev, embarqueActual.id]
@@ -385,6 +395,7 @@ export default function EmbarquesStation() {
                 )}
                 <button
                   type="button"
+                  disabled={!puedeEmbarcar}
                   onClick={() => abrirModalEditar(embarqueActual.id)}
                   className="btn btn-outline"
                   style={{ height: '2rem', fontSize: '0.72rem' }}
@@ -395,7 +406,7 @@ export default function EmbarquesStation() {
                   <button
                     type="button"
                     onClick={handleDespachar}
-                    disabled={cajasAsignadas.length === 0}
+                    disabled={!puedeEmbarcar || cajasAsignadas.length === 0}
                     className="btn btn-yellow"
                     style={{ height: '2rem', fontSize: '0.72rem' }}
                   >
@@ -450,6 +461,7 @@ export default function EmbarquesStation() {
                               {embarqueActual.estado !== 'Despachado' && (
                                 <button
                                   type="button"
+                                  disabled={!puedeEmbarcar}
                                   onClick={() => handleRetirarCaja(c.id)}
                                   className="btn btn-outline"
                                   style={{ height: '1.7rem', padding: '0 0.5rem', fontSize: '0.65rem' }}
@@ -485,7 +497,7 @@ export default function EmbarquesStation() {
                 <label className="form-label">EXPEDIENTE DE EMBARQUE</label>
                 <select
                   className="form-select"
-                  value={embarqueSeleccionadoId}
+                  value={embarqueActual?.id || embarqueSeleccionadoId}
                   onChange={(e) => setEmbarqueSeleccionadoId(Number(e.target.value))}
                 >
                   {embarques.map((e) => (
@@ -557,6 +569,7 @@ export default function EmbarquesStation() {
                       {embarqueActual?.estado !== 'Despachado' && (
                         <button
                           type="button"
+                          disabled={!puedeEmbarcar}
                           onClick={() => handleRetirarCaja(caja.id)}
                           className="btn btn-outline"
                           style={{ height: '1.8rem', padding: '0 0.5rem', fontSize: '0.65rem' }}
@@ -573,7 +586,7 @@ export default function EmbarquesStation() {
                 <button
                   type="button"
                   onClick={handleDespachar}
-                  disabled={cajasAsignadas.length === 0}
+                  disabled={!puedeEmbarcar || cajasAsignadas.length === 0}
                   className="btn btn-yellow"
                   style={{ width: '100%', height: '3.5rem', fontSize: '1rem' }}
                 >
@@ -620,6 +633,7 @@ export default function EmbarquesStation() {
                       {embarqueActual?.estado !== 'Despachado' && (
                         <button
                           type="button"
+                          disabled={!puedeEmbarcar}
                           onClick={() => handleAsignarCaja(caja.id)}
                           className="btn btn-carbon"
                           style={{ height: '1.8rem', padding: '0 0.6rem', fontSize: '0.65rem' }}
@@ -798,7 +812,7 @@ export default function EmbarquesStation() {
                 <button type="button" onClick={() => setModalNuevo(false)} className="btn btn-outline">
                   CANCELAR
                 </button>
-                <button type="submit" className="btn btn-yellow">
+                <button type="submit" disabled={!puedeEmbarcar} className="btn btn-yellow">
                   PROGRAMAR EMBARQUE
                 </button>
               </div>

@@ -3,7 +3,8 @@ import { usePlanta, CATALOGO_ESTADOS_CALIDAD, CATALOGO_DEFECTOS_OFICIALES } from
 import { EstadosCalidadEnum } from '../types/database';
 
 export default function CalidadStation() {
-  const { unidades, inspeccionesCalidad, dictaminarCalidad, sesion, abrirTrazabilidad } = usePlanta();
+  const { unidades, inspeccionesCalidad, dictaminarCalidad, sesion, abrirTrazabilidad, tienePermiso } = usePlanta();
+  const puedeDictaminar = tienePermiso('CALIDAD_DICTAMINAR');
 
   const [numeroSerie, setNumeroSerie] = useState<string>(unidades[0]?.numero_serie || '');
   const [estadoResultadoId, setEstadoResultadoId] = useState<number>(EstadosCalidadEnum.APROBADA);
@@ -31,6 +32,10 @@ export default function CalidadStation() {
 
   const handleDictaminar = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!puedeDictaminar) {
+      setMensaje({ tipo: 'err', texto: 'Su rol actual es de solo lectura en Calidad (RN-14).' });
+      return;
+    }
     if (!numeroSerie.trim()) {
       setMensaje({ tipo: 'err', texto: 'Ingrese un número de serie válido' });
       return;
@@ -226,12 +231,12 @@ export default function CalidadStation() {
                         className={`badge ${
                           unidadActual.id_estado_calidad === 1
                             ? 'badge-ok'
-                            : unidadActual.id_estado_calidad === 2
+                            : unidadActual.id_estado_calidad === 0 || unidadActual.id_estado_calidad === 2
                             ? 'badge-warn'
                             : 'badge-danger'
                         }`}
                       >
-                        {unidadActual.estado_calidad_nombre}
+                        {unidadActual.estado_calidad_nombre || 'Pendiente de Calidad'}
                       </span>
                     </div>
                     <div style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-mono)', fontSize: '0.75rem' }}>
@@ -339,7 +344,7 @@ export default function CalidadStation() {
                   >
                     REINICIAR FORMULARIO
                   </button>
-                  <button type="submit" className="btn btn-yellow" style={{ height: '3rem', padding: '0 1.5rem', fontSize: '0.9rem' }}>
+                  <button type="submit" disabled={!puedeDictaminar} className="btn btn-yellow" style={{ height: '3rem', padding: '0 1.5rem', fontSize: '0.9rem' }}>
                     REGISTRAR DICTAMEN DE CALIDAD
                   </button>
                 </div>

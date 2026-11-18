@@ -9,12 +9,15 @@ export class UnidadesRepository {
              COALESCE(ec.permite_empaque, FALSE) as permite_empaque,
              m.nombre_modelo as modelo,
              col.nombre_color as color,
+             c.nombre_cliente as cliente,
+             c.nombre_cliente,
              o.folio as folio_orden
       FROM unidades u
       LEFT JOIN catalogo_estados_calidad ec ON u.id_estado_calidad = ec.id
       LEFT JOIN ordenes o ON u.id_orden = o.id
       LEFT JOIN modelos m ON o.id_modelo = m.id
       LEFT JOIN colores col ON o.id_color = col.id
+      LEFT JOIN clientes c ON o.id_cliente = c.id
       WHERE UPPER(u.numero_serie) = UPPER($1);
     `;
     const res = await pool.query(query, [numeroSerie]);
@@ -183,16 +186,39 @@ export class UnidadesRepository {
   async getRecientes(limit = 10): Promise<any[]> {
     const query = `
       SELECT u.*, 
-             ec.nombre_estado,
+             COALESCE(ec.nombre_estado, 'Pendiente de Calidad') as nombre_estado,
              COALESCE(m.nombre_modelo, 'NS-PRO') as modelo,
              COALESCE(col.nombre_color, 'Negro') as color,
+             c.nombre_cliente as cliente,
+             c.nombre_cliente,
              o.folio as folio_orden
       FROM unidades u
       LEFT JOIN catalogo_estados_calidad ec ON u.id_estado_calidad = ec.id
       LEFT JOIN ordenes o ON u.id_orden = o.id
       LEFT JOIN modelos m ON o.id_modelo = m.id
       LEFT JOIN colores col ON o.id_color = col.id
+      LEFT JOIN clientes c ON o.id_cliente = c.id
       ORDER BY u.id DESC
+      LIMIT $1;
+    `;
+    const res = await pool.query(query, [limit]);
+    return res.rows;
+  }
+
+  async getInspecciones(limit = 100): Promise<any[]> {
+    const query = `
+      SELECT ic.id, ic.id_unidad, u.numero_serie, ic.id_inspector,
+             usr.nombre_completo as inspector_nombre,
+             ic.id_estado_resultado, ec.nombre_estado as estado_resultado_nombre,
+             ddu.id_defecto, cd.descripcion as defecto_descripcion,
+             ic.comentarios, ic.fecha_inspeccion
+      FROM inspecciones_calidad ic
+      JOIN unidades u ON ic.id_unidad = u.id
+      JOIN usuarios usr ON ic.id_inspector = usr.id
+      JOIN catalogo_estados_calidad ec ON ic.id_estado_resultado = ec.id
+      LEFT JOIN detalle_defectos_unidad ddu ON ic.id = ddu.id_inspeccion
+      LEFT JOIN catalogo_defectos cd ON ddu.id_defecto = cd.id
+      ORDER BY ic.id DESC
       LIMIT $1;
     `;
     const res = await pool.query(query, [limit]);

@@ -10,12 +10,27 @@ export class CajasRepository {
              cli.requiere_etiqueta,
              cli.requisitos_empaque,
              m.nombre_modelo,
+             m.capacidad_caja as capacidad,
              m.capacidad_caja as capacidad_maxima,
              col.nombre_color,
              u_crea.nombre_completo as nombre_creador,
              u_cierra.nombre_completo as nombre_cerro,
              COUNT(dc.id) FILTER (WHERE dc.activo = TRUE) as piezas_actuales,
-             ec.id_embarque as id_embarque_asignado
+             ec.id_embarque as id_embarque_asignado,
+             COALESCE(
+               JSON_AGG(
+                 JSON_BUILD_OBJECT(
+                   'id', dc.id,
+                   'id_caja', dc.id_caja,
+                   'id_unidad', dc.id_unidad,
+                   'numero_serie', u_det.numero_serie,
+                   'fecha_empaque', dc.fecha_asignacion,
+                   'id_usuario_empaco', dc.id_usuario_asigna,
+                   'retirada', FALSE
+                 ) ORDER BY dc.id ASC
+               ) FILTER (WHERE dc.id IS NOT NULL),
+               '[]'::json
+             ) as detalles
       FROM cajas c
       JOIN clientes cli ON c.id_cliente = cli.id
       JOIN modelos m ON c.id_modelo = m.id
@@ -23,6 +38,7 @@ export class CajasRepository {
       JOIN usuarios u_crea ON c.id_usuario_creador = u_crea.id
       LEFT JOIN usuarios u_cierra ON c.id_usuario_cierra = u_cierra.id
       LEFT JOIN detalle_caja dc ON c.id = dc.id_caja AND dc.activo = TRUE
+      LEFT JOIN unidades u_det ON dc.id_unidad = u_det.id
       LEFT JOIN embarque_caja ec ON c.id = ec.id_caja AND ec.fecha_retiro IS NULL
       GROUP BY c.id, cli.nombre_cliente, cli.permite_mezcla_colores, cli.requiere_etiqueta, cli.requisitos_empaque, m.nombre_modelo, m.capacidad_caja, col.nombre_color, u_crea.nombre_completo, u_cierra.nombre_completo, ec.id_embarque
       ORDER BY c.id DESC;
@@ -105,7 +121,14 @@ export class CajasRepository {
       ]
     );
 
-    return nuevaCaja;
+    const completa = await this.getById(nuevaCaja.id);
+    return {
+      ...nuevaCaja,
+      ...completa,
+      capacidad: Number(completa?.capacidad_maxima ?? 12),
+      capacidad_maxima: Number(completa?.capacidad_maxima ?? 12),
+      detalles: [],
+    };
   }
 
   async cerrar(id: number, idUsuarioCierra: number): Promise<Caja> {

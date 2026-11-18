@@ -157,10 +157,31 @@ const createOrdenSchema = z.object({
   id_cliente: z.number().int().positive('El cliente es obligatorio'),
   id_modelo: z.number().int().positive('El modelo es obligatorio'),
   id_color: z.number().int().positive('El color es obligatorio'),
-  cantidad: z.number().int().positive('La cantidad debe ser mayor a 0'),
+  cantidad: z
+    .number()
+    .int()
+    .positive('La cantidad debe ser mayor a 0')
+    .max(10000, 'La cantidad máxima por orden es 10,000'),
   fecha_compromiso: z.string().min(8, 'Fecha compromiso obligatoria'),
   id_usuario_registro: z.number().int().positive().optional(),
-  id_linea_asignada: z.number().int().positive().optional(),
+  id_linea_asignada: z.number().int().positive().nullable().optional(),
+});
+
+const updateOrdenSchema = z.object({
+  folio: z.string().min(3, 'El folio es obligatorio').optional(),
+  id_cliente: z.number().int().positive().optional(),
+  id_modelo: z.number().int().positive().optional(),
+  id_color: z.number().int().positive().optional(),
+  cantidad: z
+    .number()
+    .int()
+    .positive('La cantidad debe ser mayor a 0')
+    .max(10000, 'La cantidad máxima por orden es 10,000')
+    .optional(),
+  fecha_compromiso: z.string().min(8, 'Fecha compromiso obligatoria').optional(),
+  id_linea_asignada: z.number().int().positive().nullable().optional(),
+  estado: z.enum(['Programada', 'En Proceso', 'Pausada', 'Completada', 'Cancelada']).optional(),
+  id_usuario: z.number().int().positive().optional(),
 });
 
 export class OrdenesController {
@@ -183,6 +204,7 @@ export class OrdenesController {
 
       const nueva = await ordenesRepo.create({
         ...parsed.data,
+        id_linea_asignada: parsed.data.id_linea_asignada ?? undefined,
         id_usuario_registro: resolveActorId(req, parsed.data.id_usuario_registro),
       });
       res.status(201).json({
@@ -264,6 +286,35 @@ export class OrdenesController {
       res.json({
         ok: true,
         mensaje: `Orden ${updated.folio} asignada a la Línea ${id_linea} con éxito.`,
+        data: updated,
+      });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  }
+
+  static async update(req: Request, res: Response) {
+    try {
+      const idOrden = Number(req.params.id);
+      if (isNaN(idOrden) || idOrden <= 0) {
+        return res.status(400).json({ error: 'ID de orden no válido.' });
+      }
+      const parsed = updateOrdenSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: parsed.error.issues[0].message });
+      }
+
+      const updated = await ordenesRepo.update(idOrden, {
+        ...parsed.data,
+        id_usuario: resolveActorId(req, parsed.data.id_usuario),
+      });
+      if (!updated) {
+        return res.status(404).json({ error: `La orden ${idOrden} no fue encontrada.` });
+      }
+
+      res.json({
+        ok: true,
+        mensaje: `Orden ${updated.folio} actualizada con éxito.`,
         data: updated,
       });
     } catch (err: any) {
@@ -455,8 +506,9 @@ export class AutorizacionesController {
   static async solicitar(req: Request, res: Response) {
     try {
       const { tipo, id_referencia, id_usuario_solicita, motivo } = req.body;
+      const tipoNormalizado = tipo === 'AJUSTE_CIERRE' ? 'CORRECCION_CIERRE_TURNO' : tipo;
       const resultado = await autorizacionesService.solicitar({
-        tipo,
+        tipo: tipoNormalizado,
         id_referencia: Number(id_referencia),
         id_usuario_solicita: resolveActorId(req, id_usuario_solicita),
         motivo,

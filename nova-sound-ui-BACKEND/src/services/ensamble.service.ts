@@ -70,6 +70,10 @@ export class EnsambleService {
     return this.repo.getHistorialReciente(idLinea);
   }
 
+  async getDefectosRecientes(idLinea?: number, limit = 50) {
+    return this.repo.getDefectosRecientes(idLinea, limit);
+  }
+
   async registrarDefecto(data: {
     id_ensamble: number;
     id_defecto: number;

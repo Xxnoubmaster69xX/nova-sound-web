@@ -48,6 +48,17 @@ export class EnsambleController {
     }
   }
 
+  static async getDefectos(req: Request, res: Response) {
+    try {
+      const idLinea = req.query.id_linea ? Number(req.query.id_linea) : undefined;
+      const limit = req.query.limit ? Number(req.query.limit) : 50;
+      const data = await service.getDefectosRecientes(idLinea, limit);
+      res.json(data);
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  }
+
   static async registrarDefecto(req: Request, res: Response) {
     try {
       const parsed = defectoSchema.safeParse(req.body);

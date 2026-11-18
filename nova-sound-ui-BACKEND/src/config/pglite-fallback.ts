@@ -3,18 +3,71 @@ import path from 'node:path';
 import { PGlite } from '@electric-sql/pglite';
 import { setDbPool } from './db.js';
 
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+let activePglite: PGlite | null = null;
+let shutdownHookRegistered = false;
+
+async function openPgliteWithRetry(dataDir: string, maxAttempts = 5): Promise<PGlite> {
+  let lastError: unknown;
+  const pidFile = path.join(dataDir, 'postmaster.pid');
+
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      const candidate = new PGlite(dataDir);
+      await candidate.query('SELECT 1');
+      return candidate;
+    } catch (err) {
+      lastError = err;
+      if (attempt < maxAttempts) {
+        await sleep(350);
+      }
+      // Si el proceso previo terminó abruptamente y dejó postmaster.pid huérfano,
+      // eliminamos únicamente el archivo de lock para conservar intactos los datos locales.
+      if (attempt >= 2 && fs.existsSync(pidFile)) {
+        try {
+          fs.unlinkSync(pidFile);
+        } catch {
+          // Ignorar si otro proceso ya lo liberó
+        }
+      }
+    }
+  }
+
+  throw lastError instanceof Error
+    ? lastError
+    : new Error('No se pudo abrir .pglite_data tras varios reintentos.');
+}
+
+function registerCleanShutdown(): void {
+  if (shutdownHookRegistered) return;
+  shutdownHookRegistered = true;
+
+  const closeAndExit = async (signal: NodeJS.Signals) => {
+    const instance = activePglite;
+    activePglite = null;
+    if (instance) {
+      try {
+        await instance.close();
+      } catch {
+        // Ignorar errores al cerrar durante reinicio
+      }
+    }
+    if (signal !== 'SIGUSR2') {
+      process.exit(0);
+    }
+  };
+
+  process.once('SIGINT', () => void closeAndExit('SIGINT'));
+  process.once('SIGTERM', () => void closeAndExit('SIGTERM'));
+  process.once('SIGUSR2', () => void closeAndExit('SIGUSR2'));
+}
+
 export async function initPgliteFallback(): Promise<void> {
   const dataDir = path.resolve(process.cwd(), '.pglite_data');
-  let pg: PGlite;
-  try {
-    pg = new PGlite(dataDir);
-    await pg.query('SELECT 1');
-  } catch {
-    console.warn('⚠ .pglite_data estaba bloqueada o dañada; recreando almacenamiento local limpio...');
-    fs.rmSync(dataDir, { recursive: true, force: true });
-    pg = new PGlite(dataDir);
-    await pg.query('SELECT 1');
-  }
+  const pg = await openPgliteWithRetry(dataDir, 5);
+  activePglite = pg;
+  registerCleanShutdown();
 
   const pglitePoolAdapter = {
     query: async (text: string, params?: any[]) => {

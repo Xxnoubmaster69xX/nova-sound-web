@@ -13,4 +13,5 @@ unidadesRouter.get('/trazabilidad/:numero_serie', UnidadesController.getTrazabil
 
 // Consultas
 unidadesRouter.get('/recientes', UnidadesController.getRecientes);
+unidadesRouter.get('/inspecciones', UnidadesController.getInspecciones);
 unidadesRouter.get('/historial', UnidadesController.getHistorial);

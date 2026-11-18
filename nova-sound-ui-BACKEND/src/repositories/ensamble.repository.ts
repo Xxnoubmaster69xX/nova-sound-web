@@ -95,4 +95,25 @@ export class EnsambleRepository {
     ]);
     return res.rows[0];
   }
+
+  async getDefectosRecientes(idLinea?: number, limit = 50) {
+    let query = `
+      SELECT de.id, de.id_ensamble, e.id_orden, e.id_linea, e.id_turno, e.id_operador,
+             de.id_defecto, cd.descripcion as defecto_descripcion,
+             de.cantidad, de.motivo as observaciones, de.fecha_hora as fecha_hora
+      FROM defectos_ensamble de
+      JOIN ensamble e ON de.id_ensamble = e.id
+      JOIN catalogo_defectos cd ON de.id_defecto = cd.id
+    `;
+    const params: any[] = [];
+    if (idLinea) {
+      query += ` WHERE e.id_linea = $1 `;
+      params.push(idLinea);
+    }
+    query += ` ORDER BY de.id DESC LIMIT $${params.length + 1};`;
+    params.push(limit);
+
+    const res = await pool.query(query, params);
+    return res.rows;
+  }
 }

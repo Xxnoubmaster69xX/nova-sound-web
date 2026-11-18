@@ -571,16 +571,18 @@ export default function ConfiguracionStation() {
             <div className="panel-header">
               <span className="panel-title">CATÁLOGOS GLOBALES (DATOS MAESTROS - P-38)</span>
               <div style={{ display: 'flex', gap: '0.4rem' }}>
-                {[
-                  { id: 'modelos', label: 'MODELOS (BOCINAS)' },
-                  { id: 'colores', label: 'COLORES' },
-                  { id: 'clientes', label: 'CLIENTES' },
-                  { id: 'defectos', label: 'DEFECTOS' },
-                ].map((sub) => (
+                {(
+                  [
+                    { id: 'modelos', label: 'MODELOS (BOCINAS)' },
+                    { id: 'colores', label: 'COLORES' },
+                    { id: 'clientes', label: 'CLIENTES' },
+                    { id: 'defectos', label: 'DEFECTOS' },
+                  ] as const
+                ).map((sub) => (
                   <button
                     key={sub.id}
                     type="button"
-                    onClick={() => setSubTabCatalogo(sub.id as any)}
+                    onClick={() => setSubTabCatalogo(sub.id)}
                     className={`btn ${subTabCatalogo === sub.id ? 'btn-yellow' : 'btn-outline'}`}
                     style={{ height: '1.9rem', fontSize: '0.68rem', padding: '0 0.65rem' }}
                   >

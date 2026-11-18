@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import {
   SEED_ORDENES,
@@ -41,6 +42,8 @@ import type {
 } from '../types/database';
 import { RolesEnum } from '../types/database';
 import {
+  IS_STATIC_REMOTE_DEMO,
+  type ApiRow,
   authApi,
   healthApi,
   setApiAuthHeaders,
@@ -57,19 +60,43 @@ import {
 
 const SESSION_STORAGE_KEY = 'nova_sound_session_v2';
 
+// Matriz canónica de permisos por rol (alineada con auth.middleware.ts / BD-14 / RN-14)
+export const PERMISOS_POR_ROL: Record<number, string[]> = {
+  [RolesEnum.OPERADOR]: ['ENSAMBLE_REGISTRAR', 'PRUEBA_EVALUAR'],
+  [RolesEnum.LIDER_LINEA]: ['ENSAMBLE_REGISTRAR', 'PRUEBA_EVALUAR', 'TURNO_CERRAR', 'REPORTES_CONSULTAR'],
+  [RolesEnum.INSPECTOR_CALIDAD]: ['PRUEBA_EVALUAR', 'CALIDAD_DICTAMINAR', 'REPORTES_CONSULTAR'],
+  [RolesEnum.ALMACEN_EMPAQUE]: ['EMPAQUE_OPERAR', 'EMPAQUE_SOLICITAR_REAPERTURA', 'EMBARQUE_OPERAR'],
+  [RolesEnum.SUPERVISOR_ALMACEN]: [
+    'EMPAQUE_OPERAR',
+    'EMPAQUE_SOLICITAR_REAPERTURA',
+    'EMPAQUE_AUTORIZAR_REAPERTURA',
+    'EMBARQUE_OPERAR',
+    'REPORTES_CONSULTAR',
+  ],
+  [RolesEnum.SUBGERENTE_PRODUCCION]: [
+    'ORDENES_GESTIONAR',
+    'TURNO_CERRAR',
+    'TURNO_AUTORIZAR_CORRECCION',
+    'REPORTES_CONSULTAR',
+  ],
+  [RolesEnum.GERENTE_PRODUCCION]: ['ORDENES_GESTIONAR', 'TURNO_AUTORIZAR_CORRECCION', 'REPORTES_CONSULTAR'],
+  [RolesEnum.GERENTE_PLANTA]: ['REPORTES_CONSULTAR'],
+  [RolesEnum.ADMINISTRADOR]: ['SISTEMAS_ADMIN', 'REPORTES_CONSULTAR'],
+};
+
 // ==============================================================================
 // 1. LOS 9 USUARIOS OFICIALES DEL CASO NOVA SOUND (P-37, BD-14, RNF-01c)
 // ==============================================================================
 export const USUARIOS_OFICIALES: Usuario[] = [
-  { id: 1, nomina: 'NS-OP-001', nombre_completo: 'Carlos Hernández', usuario_login: 'operador_ns', id_rol: RolesEnum.OPERADOR, activo: true },
-  { id: 2, nomina: 'NS-LD-001', nombre_completo: 'Roberto Mendoza', usuario_login: 'lider_ns', id_rol: RolesEnum.LIDER_LINEA, activo: true },
-  { id: 3, nomina: 'NS-CA-001', nombre_completo: 'Juan Pérez', usuario_login: 'calidad_ns', id_rol: RolesEnum.INSPECTOR_CALIDAD, activo: true },
-  { id: 4, nomina: 'NS-AL-001', nombre_completo: 'Lucía Gómez', usuario_login: 'almacen_ns', id_rol: RolesEnum.ALMACEN_EMPAQUE, activo: true },
-  { id: 5, nomina: 'NS-SA-001', nombre_completo: 'Fernanda Gómez', usuario_login: 'sup_almacen_ns', id_rol: RolesEnum.SUPERVISOR_ALMACEN, activo: true },
-  { id: 6, nomina: 'NS-SP-001', nombre_completo: 'Miguel Ángel Vega', usuario_login: 'subgerente_ns', id_rol: RolesEnum.SUBGERENTE_PRODUCCION, activo: true },
-  { id: 7, nomina: 'NS-GP-001', nombre_completo: 'Eduardo Díaz', usuario_login: 'gerente_prod_ns', id_rol: RolesEnum.GERENTE_PRODUCCION, activo: true },
-  { id: 8, nomina: 'NS-PL-001', nombre_completo: 'Elena Torres', usuario_login: 'gerente_planta_ns', id_rol: RolesEnum.GERENTE_PLANTA, activo: true },
-  { id: 9, nomina: 'NS-AD-001', nombre_completo: 'Marcela Juárez', usuario_login: 'admin_ns', id_rol: RolesEnum.ADMINISTRADOR, activo: true },
+  { id: 1, nomina: 'NS-OP-001', nombre_completo: 'Carlos Hernández', usuario_login: 'operador_ns', id_rol: RolesEnum.OPERADOR, permisos: PERMISOS_POR_ROL[RolesEnum.OPERADOR], activo: true },
+  { id: 2, nomina: 'NS-LD-001', nombre_completo: 'Roberto Mendoza', usuario_login: 'lider_ns', id_rol: RolesEnum.LIDER_LINEA, permisos: PERMISOS_POR_ROL[RolesEnum.LIDER_LINEA], activo: true },
+  { id: 3, nomina: 'NS-CA-001', nombre_completo: 'Juan Pérez', usuario_login: 'calidad_ns', id_rol: RolesEnum.INSPECTOR_CALIDAD, permisos: PERMISOS_POR_ROL[RolesEnum.INSPECTOR_CALIDAD], activo: true },
+  { id: 4, nomina: 'NS-AL-001', nombre_completo: 'Lucía Gómez', usuario_login: 'almacen_ns', id_rol: RolesEnum.ALMACEN_EMPAQUE, permisos: PERMISOS_POR_ROL[RolesEnum.ALMACEN_EMPAQUE], activo: true },
+  { id: 5, nomina: 'NS-SA-001', nombre_completo: 'Fernanda Gómez', usuario_login: 'sup_almacen_ns', id_rol: RolesEnum.SUPERVISOR_ALMACEN, permisos: PERMISOS_POR_ROL[RolesEnum.SUPERVISOR_ALMACEN], activo: true },
+  { id: 6, nomina: 'NS-SP-001', nombre_completo: 'Miguel Ángel Vega', usuario_login: 'subgerente_ns', id_rol: RolesEnum.SUBGERENTE_PRODUCCION, permisos: PERMISOS_POR_ROL[RolesEnum.SUBGERENTE_PRODUCCION], activo: true },
+  { id: 7, nomina: 'NS-GP-001', nombre_completo: 'Eduardo Díaz', usuario_login: 'gerente_prod_ns', id_rol: RolesEnum.GERENTE_PRODUCCION, permisos: PERMISOS_POR_ROL[RolesEnum.GERENTE_PRODUCCION], activo: true },
+  { id: 8, nomina: 'NS-PL-001', nombre_completo: 'Elena Torres', usuario_login: 'gerente_planta_ns', id_rol: RolesEnum.GERENTE_PLANTA, permisos: PERMISOS_POR_ROL[RolesEnum.GERENTE_PLANTA], activo: true },
+  { id: 9, nomina: 'NS-AD-001', nombre_completo: 'Marcela Juárez', usuario_login: 'admin_ns', id_rol: RolesEnum.ADMINISTRADOR, permisos: PERMISOS_POR_ROL[RolesEnum.ADMINISTRADOR], activo: true },
 ];
 
 export const NOMBRES_ROLES: Record<number, string> = {
@@ -181,7 +208,27 @@ export interface PlantaContextType {
 
   // Órdenes de Producción (P-40)
   ordenes: Orden[];
-  crearOrden: (folio: string, idCliente: number, idModelo: number, idColor: number, cantidad: number, fechaCompromiso: string) => Promise<{ ok: boolean; error?: string }>;
+  crearOrden: (
+    folio: string,
+    idCliente: number,
+    idModelo: number,
+    idColor: number,
+    cantidad: number,
+    fechaCompromiso: string,
+    idLineaAsignada?: number
+  ) => Promise<{ ok: boolean; error?: string }>;
+  actualizarOrden: (
+    idOrden: number,
+    payload: {
+      folio: string;
+      id_cliente: number;
+      id_modelo: number;
+      id_color: number;
+      cantidad: number;
+      fecha_compromiso: string;
+      id_linea_asignada?: number | null;
+    }
+  ) => Promise<{ ok: boolean; error?: string }>;
   importarOrdenesCsv: (textoCsv: string) => Promise<{ ok: boolean; importadas: number; error?: string }>;
   asignarLineaOrden: (idOrden: number, idLinea: number) => Promise<{ ok: boolean; error?: string }>;
 
@@ -277,7 +324,9 @@ export const PlantaProvider: React.FC<{ children: React.ReactNode }> = ({ childr
           return { sesion: parsed, autenticado: true };
         }
       }
-    } catch {}
+    } catch {
+      /* ignore */
+    }
     return {
       sesion: {
         usuario: USUARIOS_OFICIALES[8],
@@ -301,77 +350,97 @@ export const PlantaProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     setVistaActual('trazabilidad');
   };
 
-  // 2. ESTADO DE ÓRDENES
-  const [ordenes, setOrdenes] = useState<Orden[]>(SEED_ORDENES);
+  // 2. ESTADO DE ÓRDENES (solo se carga seed en modo demo estático remoto sin backend)
+  const [ordenes, setOrdenes] = useState<Orden[]>(IS_STATIC_REMOTE_DEMO ? SEED_ORDENES : []);
 
   // 3. ENSAMBLE & DEFECTOS
-  const [conteosEnsamble, setConteosEnsamble] = useState<ConteoEnsamble[]>(SEED_CONTEOS_ENSAMBLE);
+  const [conteosEnsamble, setConteosEnsamble] = useState<ConteoEnsamble[]>(
+    IS_STATIC_REMOTE_DEMO ? SEED_CONTEOS_ENSAMBLE : []
+  );
 
-  const [defectosEnsamble, setDefectosEnsamble] = useState<DefectoEnsamble[]>(SEED_DEFECTOS_ENSAMBLE);
+  const [defectosEnsamble, setDefectosEnsamble] = useState<DefectoEnsamble[]>(
+    IS_STATIC_REMOTE_DEMO ? SEED_DEFECTOS_ENSAMBLE : []
+  );
 
   // 4. PRUEBAS FUNCIONALES (Nacimiento de serie)
-  const [pruebasFuncionales, setPruebasFuncionales] = useState<PruebaFuncional[]>(SEED_PRUEBAS_FUNCIONALES);
+  const [pruebasFuncionales, setPruebasFuncionales] = useState<PruebaFuncional[]>(
+    IS_STATIC_REMOTE_DEMO ? SEED_PRUEBAS_FUNCIONALES : []
+  );
 
   // 5. UNIDADES & CALIDAD
-  const [unidades, setUnidades] = useState<Unidad[]>(SEED_UNIDADES);
+  const [unidades, setUnidades] = useState<Unidad[]>(IS_STATIC_REMOTE_DEMO ? SEED_UNIDADES : []);
 
-  const [inspeccionesCalidad, setInspeccionesCalidad] = useState<InspeccionCalidad[]>(SEED_INSPECCIONES_CALIDAD);
+  const [inspeccionesCalidad, setInspeccionesCalidad] = useState<InspeccionCalidad[]>(
+    IS_STATIC_REMOTE_DEMO ? SEED_INSPECCIONES_CALIDAD : []
+  );
 
-  const [historialUnidades, setHistorialUnidades] = useState<HistorialUnidad[]>(SEED_HISTORIAL_UNIDADES);
+  const [historialUnidades, setHistorialUnidades] = useState<HistorialUnidad[]>(
+    IS_STATIC_REMOTE_DEMO ? SEED_HISTORIAL_UNIDADES : []
+  );
 
   // 6. CAJAS Y DETALLES DE EMPAQUE (P-21..P-25)
-  const [cajas, setCajas] = useState<Caja[]>(SEED_CAJAS);
+  const [cajas, setCajas] = useState<Caja[]>(IS_STATIC_REMOTE_DEMO ? SEED_CAJAS : []);
 
-  const [detallesCajas, setDetallesCajas] = useState<DetalleCaja[]>(SEED_DETALLES_CAJAS);
+  const [detallesCajas, setDetallesCajas] = useState<DetalleCaja[]>(
+    IS_STATIC_REMOTE_DEMO ? SEED_DETALLES_CAJAS : []
+  );
 
   // 7. EMBARQUES (P-26..P-29)
-  const [embarques, setEmbarques] = useState<Embarque[]>(SEED_EMBARQUES);
+  const [embarques, setEmbarques] = useState<Embarque[]>(IS_STATIC_REMOTE_DEMO ? SEED_EMBARQUES : []);
 
   const [cajasAsignadasEmbarque, setCajasAsignadasEmbarque] = useState<Record<number, number[]>>(
-    SEED_CAJAS_ASIGNADAS_EMBARQUE
+    IS_STATIC_REMOTE_DEMO ? SEED_CAJAS_ASIGNADAS_EMBARQUE : {}
   );
 
   // 8. CIERRES DE TURNO Y GOBERNANZA (P-35, P-43, INC-A, INC-D)
-  const [cierresTurno, setCierresTurno] = useState<CierreTurno[]>([
-    {
-      id: 1,
-      fecha: '2026-11-03',
-      id_turno: 1,
-      turno_nombre: 'Mañana',
-      id_linea: 1,
-      linea_nombre: 'L1',
-      id_lider_linea: 2,
-      lider_nombre: 'Roberto Mendoza',
-      piezas_ensambladas: 102,
-      piezas_probadas: 98,
-      piezas_aprobadas_calidad: 95,
-      piezas_retrabajo: 2,
-      piezas_retencion: 1,
-      piezas_scrap: 2,
-      piezas_empacadas: 90,
-      piezas_embarcadas: 90,
-      diferencia_balance: 0,
-      objetivo_turno: 100,
-      cumplimiento_pct: 102,
-      estado: 'Cerrado',
-      observaciones: 'Turno operó con rendimiento nominal',
-      fecha_cierre: '2026-11-03 14:12:00',
-    },
-  ]);
+  const [cierresTurno, setCierresTurno] = useState<CierreTurno[]>(
+    IS_STATIC_REMOTE_DEMO
+      ? [
+          {
+            id: 1,
+            fecha: '2026-11-03',
+            id_turno: 1,
+            turno_nombre: 'Mañana',
+            id_linea: 1,
+            linea_nombre: 'L1',
+            id_lider_linea: 2,
+            lider_nombre: 'Roberto Mendoza',
+            piezas_ensambladas: 102,
+            piezas_probadas: 98,
+            piezas_aprobadas_calidad: 95,
+            piezas_retrabajo: 2,
+            piezas_retencion: 1,
+            piezas_scrap: 2,
+            piezas_empacadas: 90,
+            piezas_embarcadas: 90,
+            diferencia_balance: 0,
+            objetivo_turno: 100,
+            cumplimiento_pct: 102,
+            estado: 'Cerrado',
+            observaciones: 'Turno operó con rendimiento nominal',
+            fecha_cierre: '2026-11-03 14:12:00',
+          },
+        ]
+      : []
+  );
 
-  const [solicitudesAutorizacion, setSolicitudesAutorizacion] = useState<SolicitudAutorizacion[]>([
-    {
-      id: 1,
-      tipo: 'REAPERTURA_CAJA',
-      id_entidad: 2,
-      descripcion_entidad: 'Caja BX-2026-002',
-      motivo: 'Verificación de accesorio de cable de carga solicitado por auditoría',
-      id_usuario_solicita: 4,
-      usuario_solicita_nombre: 'Lucía Gómez (Almacén)',
-      estado: 'PENDIENTE',
-      fecha_solicitud: '2026-11-04 09:30',
-    },
-  ]);
+  const [solicitudesAutorizacion, setSolicitudesAutorizacion] = useState<SolicitudAutorizacion[]>(
+    IS_STATIC_REMOTE_DEMO
+      ? [
+          {
+            id: 1,
+            tipo: 'REAPERTURA_CAJA',
+            id_entidad: 2,
+            descripcion_entidad: 'Caja BX-2026-002',
+            motivo: 'Verificación de accesorio de cable de carga solicitado por auditoría',
+            id_usuario_solicita: 4,
+            usuario_solicita_nombre: 'Lucía Gómez (Almacén)',
+            estado: 'PENDIENTE',
+            fecha_solicitud: '2026-11-04 09:30',
+          },
+        ]
+      : []
+  );
 
   // 9. PARÁMETROS Y BITÁCORA
   const [parametros, setParametros] = useState<ParametroSistema[]>([
@@ -380,7 +449,22 @@ export const PlantaProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     { id: 3, clave: 'POLITICA_RETENCION_ANOS', valor: 2, tipo_dato: 'INT', descripcion: 'Años mínimos de conservación de trazabilidad e histórico' },
   ]);
 
-  const [bitacora, setBitacora] = useState<Bitacora[]>(SEED_BITACORA);
+  const [bitacora, setBitacora] = useState<Bitacora[]>(IS_STATIC_REMOTE_DEMO ? SEED_BITACORA : []);
+
+  const cargarDatosDemoOffline = () => {
+    setOrdenes(SEED_ORDENES);
+    setConteosEnsamble(SEED_CONTEOS_ENSAMBLE);
+    setDefectosEnsamble(SEED_DEFECTOS_ENSAMBLE);
+    setPruebasFuncionales(SEED_PRUEBAS_FUNCIONALES);
+    setUnidades(SEED_UNIDADES);
+    setInspeccionesCalidad(SEED_INSPECCIONES_CALIDAD);
+    setHistorialUnidades(SEED_HISTORIAL_UNIDADES);
+    setCajas(SEED_CAJAS);
+    setDetallesCajas(SEED_DETALLES_CAJAS);
+    setEmbarques(SEED_EMBARQUES);
+    setCajasAsignadasEmbarque(SEED_CAJAS_ASIGNADAS_EMBARQUE);
+    setBitacora(SEED_BITACORA);
+  };
 
   // Sincronizar sesión con LocalStorage y headers RBAC
   useEffect(() => {
@@ -388,7 +472,9 @@ export const PlantaProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     try {
       localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(sesion));
       setApiAuthHeaders(sesion.usuario.id, sesion.usuario.id_rol);
-    } catch {}
+    } catch {
+      /* ignore */
+    }
   }, [sesion, estaAutenticado]);
 
   // Consultar estado real del backend (/api/health) y modo mantenimiento
@@ -415,66 +501,84 @@ export const PlantaProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
   // Sincronización integral de módulos con PostgreSQL
   const cargarOperacionCore = async () => {
-    const [ordRes, ensRes, pruRes, uniRes, histRes, cajRes, embRes, cieRes, autRes, parRes, bitRes] =
-      await Promise.all([
-        ordenesApi.getAll(),
-        ensambleApi.getRecientes(),
-        pruebasApi.getRecientes(50),
-        unidadesApi.getRecientes(100),
-        unidadesApi.getHistorial(100),
-        cajasApi.getAll(),
-        embarquesApi.getAll(),
-        turnosApi.getCierres(20),
-        autorizacionesApi.getAll(),
-        adminApi.getParametros(),
-        adminApi.getBitacora(),
-      ]);
+    const [
+      ordRes,
+      ensRes,
+      defRes,
+      pruRes,
+      uniRes,
+      insRes,
+      histRes,
+      cajRes,
+      embRes,
+      cieRes,
+      autRes,
+      parRes,
+      bitRes,
+    ] = await Promise.all([
+      ordenesApi.getAll(),
+      ensambleApi.getRecientes(),
+      ensambleApi.getDefectos(),
+      pruebasApi.getRecientes(50),
+      unidadesApi.getRecientes(100),
+      unidadesApi.getInspecciones(100),
+      unidadesApi.getHistorial(100),
+      cajasApi.getAll(),
+      embarquesApi.getAll(),
+      turnosApi.getCierres(20),
+      autorizacionesApi.getAll(),
+      adminApi.getParametros(),
+      adminApi.getBitacora(),
+    ]);
 
+    let ordenesMapeadas: Orden[] = [];
     if (ordRes.ok && Array.isArray(ordRes.data)) {
-      setOrdenes(
-        ordRes.data.map((o: any) => ({
-          id: Number(o.id),
-          folio: o.folio,
-          id_cliente: Number(o.id_cliente),
-          cliente_nombre:
-            o.cliente_nombre ||
+      ordenesMapeadas = ordRes.data.map((o: ApiRow) => ({
+        id: Number(o.id),
+        folio: String(o.folio || ''),
+        id_cliente: Number(o.id_cliente),
+        cliente_nombre: String(
+          o.cliente_nombre ||
             o.nombre_cliente ||
             CATALOGO_CLIENTES.find((c) => c.id === Number(o.id_cliente))?.nombre_cliente ||
-            'Cliente',
-          id_modelo: Number(o.id_modelo),
-          modelo_nombre:
-            o.modelo_nombre ||
+            'Cliente'
+        ),
+        id_modelo: Number(o.id_modelo),
+        modelo_nombre: String(
+          o.modelo_nombre ||
             o.nombre_modelo ||
             CATALOGO_MODELOS.find((m) => m.id === Number(o.id_modelo))?.nombre_modelo ||
-            'Modelo',
-          id_color: Number(o.id_color),
-          color_nombre:
-            o.color_nombre ||
+            'Modelo'
+        ),
+        id_color: Number(o.id_color),
+        color_nombre: String(
+          o.color_nombre ||
             o.nombre_color ||
             CATALOGO_COLORES.find((c) => c.id === Number(o.id_color))?.nombre_color ||
-            'Color',
-          cantidad: Number(o.cantidad),
-          fecha_compromiso: String(o.fecha_compromiso || '').substring(0, 10),
-          fecha_recepcion: String(o.fecha_recepcion || '').substring(0, 10),
-          id_usuario_registro: Number(o.id_usuario_registro || 1),
-          estado: o.estado || 'Pendiente',
-          id_linea_asignada: o.id_linea_asignada ? Number(o.id_linea_asignada) : null,
-          linea_nombre:
-            o.linea_nombre ||
-            o.nombre_linea ||
-            CATALOGO_LINEAS.find((l) => l.id === Number(o.id_linea_asignada))?.nombre_linea ||
-            null,
-          id_usuario_asigno: o.id_usuario_asigno ? Number(o.id_usuario_asigno) : null,
-          fecha_asignacion: o.fecha_asignacion || null,
-          piezas_ensambladas: Number(o.piezas_ensambladas ?? 0),
-          piezas_aprobadas: Number(o.piezas_aprobadas ?? 0),
-        }))
-      );
+            'Color'
+        ),
+        cantidad: Number(o.cantidad),
+        fecha_compromiso: String(o.fecha_compromiso || '').substring(0, 10),
+        fecha_recepcion: String(o.fecha_recepcion || '').substring(0, 10),
+        id_usuario_registro: Number(o.id_usuario_registro || 1),
+        estado: String(o.estado || 'Programada'),
+        id_linea_asignada: o.id_linea_asignada ? Number(o.id_linea_asignada) : null,
+        linea_nombre:
+          (o.linea_nombre ? String(o.linea_nombre) : null) ||
+          (o.nombre_linea ? String(o.nombre_linea) : null) ||
+          CATALOGO_LINEAS.find((l) => l.id === Number(o.id_linea_asignada))?.nombre_linea ||
+          null,
+        id_usuario_asigno: o.id_usuario_asigno ? Number(o.id_usuario_asigno) : null,
+        fecha_asignacion: o.fecha_asignacion ? String(o.fecha_asignacion) : null,
+        piezas_ensambladas: Number(o.piezas_ensambladas ?? o.cantidad_ensamblada ?? 0),
+        piezas_aprobadas: Number(o.piezas_aprobadas ?? o.cantidad_aprobada ?? 0),
+      }));
+      setOrdenes(ordenesMapeadas);
     }
 
     if (ensRes.ok && Array.isArray(ensRes.data)) {
       setConteosEnsamble(
-        ensRes.data.map((c: any) => ({
+        ensRes.data.map((c: ApiRow) => ({
           id: Number(c.id),
           id_orden: Number(c.id_orden),
           id_linea: Number(c.id_linea),
@@ -486,9 +590,26 @@ export const PlantaProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       );
     }
 
+    if (defRes.ok && Array.isArray(defRes.data)) {
+      setDefectosEnsamble(
+        defRes.data.map((d: ApiRow) => ({
+          id: Number(d.id),
+          id_orden: Number(d.id_orden),
+          id_linea: Number(d.id_linea),
+          id_turno: Number(d.id_turno),
+          id_operador: Number(d.id_operador || 1),
+          id_defecto: Number(d.id_defecto),
+          defecto_descripcion: d.defecto_descripcion ? String(d.defecto_descripcion) : undefined,
+          cantidad: Number(d.cantidad || 1),
+          observaciones: d.observaciones ? String(d.observaciones) : undefined,
+          fecha_hora: String(d.fecha_hora || '').replace('T', ' ').substring(0, 19),
+        }))
+      );
+    }
+
     if (pruRes.ok && Array.isArray(pruRes.data)) {
       setPruebasFuncionales(
-        pruRes.data.map((p: any) => ({
+        pruRes.data.map((p: ApiRow) => ({
           id: Number(p.id),
           id_orden: Number(p.id_orden),
           id_linea: Number(p.id_linea),
@@ -499,11 +620,19 @@ export const PlantaProvider: React.FC<{ children: React.ReactNode }> = ({ childr
           valida_carga: Boolean(p.valida_carga),
           valida_bluetooth: Boolean(p.valida_bluetooth),
           aprobada: Boolean(
-            p.aprobada ?? (p.valida_encendido && p.valida_audio && p.valida_carga && p.valida_bluetooth)
+            p.aprobada ??
+              (Boolean(p.valida_encendido) &&
+                Boolean(p.valida_audio) &&
+                Boolean(p.valida_carga) &&
+                Boolean(p.valida_bluetooth))
           ),
-          numero_serie: p.numero_serie || null,
+          numero_serie: p.numero_serie ? String(p.numero_serie) : null,
           id_defecto_falla: p.id_defecto_falla ? Number(p.id_defecto_falla) : null,
-          defecto_falla: p.defecto_falla || p.descripcion_defecto || null,
+          defecto_falla: p.defecto_falla
+            ? String(p.defecto_falla)
+            : p.descripcion_defecto
+            ? String(p.descripcion_defecto)
+            : null,
           fecha_hora: String(p.fecha_hora || p.fecha_prueba || '').replace('T', ' ').substring(0, 19),
         }))
       );
@@ -511,39 +640,72 @@ export const PlantaProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
     if (uniRes.ok && Array.isArray(uniRes.data)) {
       setUnidades(
-        uniRes.data.map((u: any) => ({
-          id: Number(u.id),
-          id_orden: Number(u.id_orden),
-          id_linea: Number(u.id_linea),
-          id_turno: Number(u.id_turno),
-          numero_serie: u.numero_serie,
-          id_estado_calidad: Number(u.id_estado_calidad),
-          estado_calidad_nombre:
-            u.estado_calidad_nombre ||
-            u.nombre_estado ||
-            CATALOGO_ESTADOS_CALIDAD.find((e) => e.id === Number(u.id_estado_calidad))?.nombre_estado ||
-            'Aprobada',
-          id_caja: u.id_caja ? Number(u.id_caja) : null,
-          fecha_ensamble: String(u.fecha_ensamble || '').replace('T', ' ').substring(0, 16),
-          modelo: u.modelo || u.nombre_modelo || 'NS-PRO',
-          color: u.color || u.nombre_color || 'Negro',
-          cliente: u.cliente || u.nombre_cliente,
-          id_prueba_funcional: u.id_prueba_funcional ? Number(u.id_prueba_funcional) : undefined,
+        uniRes.data.map((u: ApiRow) => {
+          const rawEstado = u.id_estado_calidad;
+          const idEstadoCalidad =
+            rawEstado === null || rawEstado === undefined || Number(rawEstado) === 0 ? 0 : Number(rawEstado);
+          const estadoNombre =
+            idEstadoCalidad === 0
+              ? 'Pendiente de Calidad'
+              : String(
+                  u.estado_calidad_nombre ||
+                    u.nombre_estado ||
+                    CATALOGO_ESTADOS_CALIDAD.find((e) => e.id === idEstadoCalidad)?.nombre_estado ||
+                    'Pendiente de Calidad'
+                );
+          const ordenDelMapa = ordenesMapeadas.find((o) => o.id === Number(u.id_orden));
+          return {
+            id: Number(u.id),
+            id_orden: Number(u.id_orden),
+            id_linea: Number(u.id_linea),
+            id_turno: Number(u.id_turno),
+            numero_serie: String(u.numero_serie || ''),
+            id_estado_calidad: idEstadoCalidad,
+            estado_calidad_nombre: estadoNombre,
+            id_caja: u.id_caja ? Number(u.id_caja) : null,
+            fecha_ensamble: String(u.fecha_ensamble || u.fecha_creacion || '').replace('T', ' ').substring(0, 16),
+            modelo: String(u.modelo || u.nombre_modelo || ordenDelMapa?.modelo_nombre || 'NS-PRO'),
+            color: String(u.color || u.nombre_color || ordenDelMapa?.color_nombre || 'Negro'),
+            cliente: String(u.cliente || u.nombre_cliente || ordenDelMapa?.cliente_nombre || ''),
+            id_prueba_funcional: u.id_prueba_funcional ? Number(u.id_prueba_funcional) : undefined,
+          };
+        })
+      );
+    }
+
+    if (insRes.ok && Array.isArray(insRes.data)) {
+      setInspeccionesCalidad(
+        insRes.data.map((i: ApiRow) => ({
+          id: Number(i.id),
+          id_unidad: Number(i.id_unidad),
+          numero_serie: i.numero_serie ? String(i.numero_serie) : '',
+          id_inspector: Number(i.id_inspector || 1),
+          inspector_nombre: String(i.inspector_nombre || 'Inspector'),
+          id_estado_resultado: Number(i.id_estado_resultado || 1),
+          estado_resultado_nombre: String(
+            i.estado_resultado_nombre ||
+              CATALOGO_ESTADOS_CALIDAD.find((e) => e.id === Number(i.id_estado_resultado))?.nombre_estado ||
+              'Aprobada'
+          ),
+          id_defecto: i.id_defecto ? Number(i.id_defecto) : null,
+          defecto_descripcion: i.defecto_descripcion ? String(i.defecto_descripcion) : null,
+          comentarios: i.comentarios ? String(i.comentarios) : null,
+          fecha_inspeccion: String(i.fecha_inspeccion || '').replace('T', ' ').substring(0, 16),
         }))
       );
     }
 
     if (histRes.ok && Array.isArray(histRes.data)) {
       setHistorialUnidades(
-        histRes.data.map((h: any) => ({
+        histRes.data.map((h: ApiRow) => ({
           id: Number(h.id),
           id_unidad: Number(h.id_unidad),
-          numero_serie: h.numero_serie || '',
+          numero_serie: String(h.numero_serie || ''),
           id_usuario: Number(h.id_usuario || 1),
-          usuario_nombre: h.usuario_nombre || h.nombre_completo || 'Usuario',
-          estado_anterior: h.estado_anterior || '-',
-          estado_nuevo: h.estado_nuevo || '-',
-          motivo: h.motivo || '',
+          usuario_nombre: String(h.usuario_nombre || h.nombre_completo || 'Usuario'),
+          estado_anterior: String(h.estado_anterior || '-'),
+          estado_nuevo: String(h.estado_nuevo || '-'),
+          motivo: String(h.motivo || ''),
           fecha_hora: String(h.fecha_hora || '').replace('T', ' ').substring(0, 16),
         }))
       );
@@ -552,123 +714,133 @@ export const PlantaProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     if (cajRes.ok && Array.isArray(cajRes.data)) {
       const detallesAcumulados: DetalleCaja[] = [];
       setCajas(
-        cajRes.data.map((c: any) => {
-          if (Array.isArray(c.detalles)) {
-            for (const d of c.detalles) {
-              detallesAcumulados.push({
-                id: Number(d.id),
-                id_caja: Number(c.id),
-                id_unidad: Number(d.id_unidad),
-                numero_serie: d.numero_serie || '',
-                slot: Number(d.slot || 1),
-                fecha_empaque: String(d.fecha_empaque || '').replace('T', ' ').substring(0, 16),
-                id_usuario_empaco: Number(d.id_usuario_empaco || 1),
-                retirada: Boolean(d.retirada),
-                fecha_retiro: d.fecha_retiro ? String(d.fecha_retiro).replace('T', ' ').substring(0, 16) : null,
-                motivo_retiro: d.motivo_retiro || null,
-                id_usuario_retiro: d.id_usuario_retiro ? Number(d.id_usuario_retiro) : null,
-              });
-            }
-          }
+        cajRes.data.map((c: ApiRow) => {
+          const rawDetalles = Array.isArray(c.detalles) ? (c.detalles as ApiRow[]) : [];
+          rawDetalles.forEach((d, idx) => {
+            detallesAcumulados.push({
+              id: Number(d.id),
+              id_caja: Number(c.id),
+              id_unidad: Number(d.id_unidad),
+              numero_serie: String(d.numero_serie || ''),
+              slot: Number(d.slot || idx + 1),
+              fecha_empaque: String(d.fecha_empaque || '').replace('T', ' ').substring(0, 16),
+              id_usuario_empaco: Number(d.id_usuario_empaco || 1),
+              retirada: Boolean(d.retirada),
+              fecha_retiro: d.fecha_retiro ? String(d.fecha_retiro).replace('T', ' ').substring(0, 16) : null,
+              motivo_retiro: d.motivo_retiro ? String(d.motivo_retiro) : null,
+              id_usuario_retiro: d.id_usuario_retiro ? Number(d.id_usuario_retiro) : null,
+            });
+          });
           return {
             id: Number(c.id),
-            codigo_caja: c.codigo_caja,
+            codigo_caja: String(c.codigo_caja || ''),
             id_cliente: Number(c.id_cliente),
-            cliente_nombre:
+            cliente_nombre: String(
               c.cliente_nombre ||
-              c.nombre_cliente ||
-              CATALOGO_CLIENTES.find((cl) => cl.id === Number(c.id_cliente))?.nombre_cliente ||
-              'Cliente',
+                c.nombre_cliente ||
+                CATALOGO_CLIENTES.find((cl) => cl.id === Number(c.id_cliente))?.nombre_cliente ||
+                'Cliente'
+            ),
             id_modelo: Number(c.id_modelo),
-            modelo_nombre:
+            modelo_nombre: String(
               c.modelo_nombre ||
-              c.nombre_modelo ||
-              CATALOGO_MODELOS.find((m) => m.id === Number(c.id_modelo))?.nombre_modelo ||
-              'Modelo',
+                c.nombre_modelo ||
+                CATALOGO_MODELOS.find((m) => m.id === Number(c.id_modelo))?.nombre_modelo ||
+                'Modelo'
+            ),
             id_color: c.id_color ? Number(c.id_color) : 1,
-            color_nombre:
+            color_nombre: String(
               c.color_nombre ||
-              c.nombre_color ||
-              CATALOGO_COLORES.find((co) => co.id === Number(c.id_color))?.nombre_color ||
-              'Negro',
-            capacidad: Number(c.capacidad || 12),
+                c.nombre_color ||
+                CATALOGO_COLORES.find((co) => co.id === Number(c.id_color))?.nombre_color ||
+                'Negro'
+            ),
+            capacidad: Number(
+              c.capacidad ??
+                c.capacidad_maxima ??
+                CATALOGO_MODELOS.find((m) => m.id === Number(c.id_modelo))?.capacidad_caja ??
+                12
+            ),
             piezas_actuales: Number(c.piezas_actuales ?? c.total_unidades ?? 0),
             fecha_creacion: String(c.fecha_creacion || '').replace('T', ' ').substring(0, 19),
             fecha_cierre: c.fecha_cierre ? String(c.fecha_cierre).replace('T', ' ').substring(0, 19) : null,
-            estado: c.estado || 'Abierta',
+            estado: (c.estado === 'Cerrada' ? 'Cerrada' : 'Abierta') as 'Abierta' | 'Cerrada',
             id_usuario_creador: Number(c.id_usuario_creador || 1),
             id_usuario_cerro: c.id_usuario_cerro ? Number(c.id_usuario_cerro) : null,
             id_embarque_asignado: c.id_embarque_asignado ? Number(c.id_embarque_asignado) : null,
           };
         })
       );
-      if (detallesAcumulados.length > 0) {
-        setDetallesCajas(detallesAcumulados);
-      }
+      setDetallesCajas(detallesAcumulados);
     }
 
     if (embRes.ok && Array.isArray(embRes.data)) {
       const mapaCajas: Record<number, number[]> = {};
       setEmbarques(
-        embRes.data.map((e: any) => {
+        embRes.data.map((e: ApiRow) => {
           const embId = Number(e.id);
-          if (Array.isArray(e.cajas)) {
-            mapaCajas[embId] = e.cajas.map((c: any) => Number(typeof c === 'object' ? c.id : c));
-          }
+          const rawCajas = Array.isArray(e.cajas) ? e.cajas : [];
+          mapaCajas[embId] = rawCajas.map((c) =>
+            Number(typeof c === 'object' && c !== null ? (c as ApiRow).id : c)
+          );
           return {
             id: embId,
-            referencia_embarque: e.referencia_embarque,
-            id_pedido: e.id_pedido || '',
+            referencia_embarque: String(e.referencia_embarque || ''),
+            id_pedido: String(e.folio_pedido || e.id_pedido || ''),
             id_cliente: Number(e.id_cliente),
-            cliente_nombre:
+            cliente_nombre: String(
               e.cliente_nombre ||
-              e.nombre_cliente ||
-              CATALOGO_CLIENTES.find((cl) => cl.id === Number(e.id_cliente))?.nombre_cliente ||
-              'Cliente',
+                e.nombre_cliente ||
+                CATALOGO_CLIENTES.find((cl) => cl.id === Number(e.id_cliente))?.nombre_cliente ||
+                'Cliente'
+            ),
             id_transportista: Number(e.id_transportista),
-            transportista_nombre:
+            transportista_nombre: String(
               e.transportista_nombre ||
-              CATALOGO_TRANSPORTISTAS.find((t) => t.id === Number(e.id_transportista))?.nombre ||
-              'Transportista',
-            nombre_chofer: e.nombre_chofer || '',
-            placas_unidad: e.placas_unidad || '',
+                CATALOGO_TRANSPORTISTAS.find((t) => t.id === Number(e.id_transportista))?.nombre ||
+                'Transportista'
+            ),
+            nombre_chofer: String(e.nombre_chofer || ''),
+            placas_unidad: String(e.placas_unidad || ''),
             fecha_programada: String(e.fecha_programada || '').replace('T', ' ').substring(0, 16),
             fecha_salida: e.fecha_salida ? String(e.fecha_salida).replace('T', ' ').substring(0, 16) : null,
-            estado: e.estado || 'Programado',
-            observaciones: e.observaciones || null,
+            estado: String(e.estado || 'Programado'),
+            observaciones: e.observaciones ? String(e.observaciones) : null,
             id_usuario_creo: Number(e.id_usuario_creo || 1),
             id_usuario_confirmo: e.id_usuario_confirmo ? Number(e.id_usuario_confirmo) : null,
             fecha_creacion: String(e.fecha_creacion || '').replace('T', ' ').substring(0, 16),
-            total_cajas: Number(e.total_cajas ?? (Array.isArray(e.cajas) ? e.cajas.length : 0)),
+            total_cajas: Number(e.total_cajas ?? rawCajas.length ?? 0),
             total_piezas: Number(e.total_piezas ?? 0),
           };
         })
       );
-      if (Object.keys(mapaCajas).length > 0) {
-        setCajasAsignadasEmbarque((prev) => ({ ...prev, ...mapaCajas }));
-      }
+      setCajasAsignadasEmbarque(mapaCajas);
     }
 
     if (cieRes.ok && Array.isArray(cieRes.data)) {
       setCierresTurno(
-        cieRes.data.map((c: any) => ({
+        cieRes.data.map((c: ApiRow) => ({
           id: Number(c.id),
           fecha: String(c.fecha || '').substring(0, 10),
           id_turno: Number(c.id_turno),
-          turno_nombre:
+          turno_nombre: String(
             c.turno_nombre ||
-            CATALOGO_TURNOS.find((t) => t.id === Number(c.id_turno))?.nombre_turno ||
-            'Mañana',
+              c.nombre_turno ||
+              CATALOGO_TURNOS.find((t) => t.id === Number(c.id_turno))?.nombre_turno ||
+              'Mañana'
+          ),
           id_linea: Number(c.id_linea),
-          linea_nombre:
+          linea_nombre: String(
             c.linea_nombre ||
-            CATALOGO_LINEAS.find((l) => l.id === Number(c.id_linea))?.nombre_linea ||
-            'L1',
+              c.nombre_linea ||
+              CATALOGO_LINEAS.find((l) => l.id === Number(c.id_linea))?.nombre_linea ||
+              'L1'
+          ),
           id_lider_linea: Number(c.id_lider_linea || c.id_lider || 1),
-          lider_nombre: c.lider_nombre || 'Líder de Línea',
+          lider_nombre: String(c.lider_nombre || c.nombre_lider || 'Líder de Línea'),
           piezas_ensambladas: Number(c.piezas_ensambladas ?? 0),
           piezas_probadas: Number(c.piezas_probadas ?? 0),
-          piezas_aprobadas_calidad: Number(c.piezas_aprobadas_calidad ?? 0),
+          piezas_aprobadas_calidad: Number(c.piezas_aprobadas_calidad ?? c.piezas_liberadas ?? 0),
           piezas_retrabajo: Number(c.piezas_retrabajo ?? 0),
           piezas_retencion: Number(c.piezas_retencion ?? 0),
           piezas_scrap: Number(c.piezas_scrap ?? 0),
@@ -677,64 +849,77 @@ export const PlantaProvider: React.FC<{ children: React.ReactNode }> = ({ childr
           diferencia_balance: Number(c.diferencia_balance ?? 0),
           objetivo_turno: Number(c.objetivo_turno ?? 100),
           cumplimiento_pct: Number(c.cumplimiento_pct ?? 0),
-          estado: c.estado || 'Cerrado',
-          observaciones: c.observaciones || '',
-          fecha_cierre: String(c.fecha_cierre || '').replace('T', ' ').substring(0, 19),
+          estado: String(c.estado || 'Cerrado') as CierreTurno['estado'],
+          observaciones: String(c.observaciones || ''),
+          fecha_cierre: String(c.fecha_cierre || c.fecha_hora_cierre || '').replace('T', ' ').substring(0, 19),
         }))
       );
     }
 
     if (autRes.ok && Array.isArray(autRes.data)) {
       setSolicitudesAutorizacion(
-        autRes.data.map((s: any) => ({
+        autRes.data.map((s: ApiRow) => ({
           id: Number(s.id),
-          tipo: s.tipo,
+          tipo: s.tipo as SolicitudAutorizacion['tipo'],
           id_entidad: Number(s.id_entidad ?? s.id_referencia ?? 0),
-          descripcion_entidad: s.descripcion_entidad || `${s.tipo} #${s.id_referencia ?? s.id_entidad ?? ''}`,
-          motivo: s.motivo || '',
+          descripcion_entidad: String(s.descripcion_entidad || `${s.tipo} #${s.id_referencia ?? s.id_entidad ?? ''}`),
+          motivo: String(s.motivo || ''),
           id_usuario_solicita: Number(s.id_usuario_solicita || 1),
-          usuario_solicita_nombre: s.usuario_solicita_nombre || 'Usuario',
-          estado: s.estado || 'PENDIENTE',
+          usuario_solicita_nombre: String(s.usuario_solicita_nombre || s.nombre_solicitante || 'Usuario'),
+          estado: String(s.estado || 'PENDIENTE') as SolicitudAutorizacion['estado'],
           fecha_solicitud: String(s.fecha_solicitud || '').replace('T', ' ').substring(0, 16),
           id_usuario_autoriza: s.id_usuario_autoriza ? Number(s.id_usuario_autoriza) : undefined,
-          usuario_autoriza_nombre: s.usuario_autoriza_nombre || undefined,
+          usuario_autoriza_nombre:
+            s.usuario_autoriza_nombre || s.nombre_autorizador
+              ? String(s.usuario_autoriza_nombre || s.nombre_autorizador)
+              : undefined,
           fecha_resolucion: s.fecha_resolucion ? String(s.fecha_resolucion).replace('T', ' ').substring(0, 16) : undefined,
-          comentarios_resolucion: s.comentarios_resolucion || s.comentario_resolucion || undefined,
+          comentarios_resolucion:
+            s.comentarios_resolucion || s.comentario_resolucion
+              ? String(s.comentarios_resolucion || s.comentario_resolucion)
+              : undefined,
         }))
       );
     }
 
     if (parRes.ok && Array.isArray(parRes.data)) {
       setParametros(
-        parRes.data.map((p: any) => ({
+        parRes.data.map((p: ApiRow) => ({
           id: Number(p.id),
-          clave: p.clave,
-          valor: p.valor,
-          tipo_dato: p.tipo_dato,
-          descripcion: p.descripcion,
+          clave: String(p.clave || ''),
+          valor: p.valor as ParametroSistema['valor'],
+          tipo_dato: p.tipo_dato ? String(p.tipo_dato) : undefined,
+          descripcion: p.descripcion ? String(p.descripcion) : null,
         }))
       );
     }
 
     if (bitRes.ok && Array.isArray(bitRes.data)) {
       setBitacora(
-        bitRes.data.map((b: any) => ({
+        bitRes.data.map((b: ApiRow) => ({
           id: Number(b.id),
           fecha: String(b.fecha || b.fecha_hora || '').replace('T', ' ').substring(0, 19),
           id_usuario: Number(b.id_usuario || 1),
-          usuario_nombre: b.usuario_nombre || b.nombre_completo || 'Usuario',
-          modulo: b.modulo || 'SISTEMA',
-          accion: b.accion || '',
-          motivo: b.motivo || undefined,
+          usuario_nombre: String(b.usuario_nombre || b.nombre_completo || 'Usuario'),
+          modulo: String(b.modulo || 'SISTEMA'),
+          accion: String(b.accion || ''),
+          motivo: b.motivo ? String(b.motivo) : undefined,
         }))
       );
     }
   };
 
   useEffect(() => {
-    if (estaAutenticado) {
-      cargarOperacionCore();
-    }
+    if (!estaAutenticado) return;
+    let active = true;
+    void Promise.resolve().then(() => {
+      if (active) {
+        void cargarOperacionCore();
+      }
+    });
+    return () => {
+      active = false;
+    };
   }, [estaAutenticado]);
 
   const tienePermiso = (codigoPermiso: string): boolean => {
@@ -742,7 +927,7 @@ export const PlantaProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     if (Array.isArray(permisos) && permisos.length > 0) {
       return permisos.includes(codigoPermiso);
     }
-    return sesion.usuario.id_rol === RolesEnum.ADMINISTRADOR;
+    return (PERMISOS_POR_ROL[sesion.usuario.id_rol] || []).includes(codigoPermiso);
   };
 
   // MÉTODOS DE AUTENTICACIÓN Y SESIÓN (conectado a POST /api/auth/login + fallback demo offline)
@@ -760,6 +945,7 @@ export const PlantaProvider: React.FC<{ children: React.ReactNode }> = ({ childr
             u.nomina.toLowerCase() === login.trim().toLowerCase()
         );
         if (usuarioDemo && contrasena === '123456') {
+          cargarDatosDemoOffline();
           const nuevaSesion: SesionOperativa = {
             usuario: usuarioDemo,
             linea: lineaObj,
@@ -768,7 +954,9 @@ export const PlantaProvider: React.FC<{ children: React.ReactNode }> = ({ childr
           setApiAuthHeaders(usuarioDemo.id, usuarioDemo.id_rol);
           try {
             localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(nuevaSesion));
-          } catch {}
+          } catch {
+            /* ignore */
+          }
           setSesion(nuevaSesion);
           setEstaAutenticado(true);
           registrarBitacora('AUTH', `LOGIN_DEMO: ${usuarioDemo.nombre_completo}`);
@@ -801,7 +989,9 @@ export const PlantaProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     setApiAuthHeaders(usuarioAutenticado.id, usuarioAutenticado.id_rol);
     try {
       localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(nuevaSesion));
-    } catch {}
+    } catch {
+      /* ignore */
+    }
     setSesion(nuevaSesion);
     setEstaAutenticado(true);
     registrarBitacora('AUTH', `LOGIN_EXITOSO: ${usuarioAutenticado.nombre_completo}`);
@@ -813,7 +1003,9 @@ export const PlantaProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     setApiAuthHeaders(null, null);
     try {
       localStorage.removeItem(SESSION_STORAGE_KEY);
-    } catch {}
+    } catch {
+      /* ignore */
+    }
   };
 
   const cambiarUsuarioSimulado = (idRol: number) => {
@@ -883,7 +1075,8 @@ export const PlantaProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     idModelo: number,
     idColor: number,
     cantidad: number,
-    fechaCompromiso: string
+    fechaCompromiso: string,
+    idLineaAsignada?: number
   ) => {
     if (!folio || cantidad <= 0) return { ok: false, error: 'Folio y cantidad mayor a cero requeridos' };
 
@@ -895,6 +1088,7 @@ export const PlantaProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       cantidad,
       fecha_compromiso: fechaCompromiso || '2026-11-20',
       id_usuario_registro: sesion.usuario.id,
+      id_linea_asignada: idLineaAsignada || undefined,
     });
 
     if (!res.ok) return { ok: false, error: res.error };
@@ -904,10 +1098,38 @@ export const PlantaProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     return { ok: true };
   };
 
+  const actualizarOrden = async (
+    idOrden: number,
+    payload: {
+      folio: string;
+      id_cliente: number;
+      id_modelo: number;
+      id_color: number;
+      cantidad: number;
+      fecha_compromiso: string;
+      id_linea_asignada?: number | null;
+    }
+  ) => {
+    if (!payload.folio || payload.cantidad <= 0) {
+      return { ok: false, error: 'Folio y cantidad mayor a cero requeridos' };
+    }
+
+    const res = await ordenesApi.update(idOrden, {
+      ...payload,
+      id_usuario: sesion.usuario.id,
+    });
+
+    if (!res.ok) return { ok: false, error: res.error };
+
+    await cargarOperacionCore();
+    registrarBitacora('ORDENES', `ACTUALIZAR_ORDEN: Folio ${payload.folio} (${payload.cantidad} pzas)`);
+    return { ok: true };
+  };
+
   const importarOrdenesCsv = async (textoCsv: string) => {
     try {
       const lineas = textoCsv.trim().split(/\r?\n/);
-      const items: any[] = [];
+      const items: ApiRow[] = [];
 
       for (const line of lineas) {
         if (!line || line.toLowerCase().startsWith('folio')) continue;
@@ -1002,19 +1224,22 @@ export const PlantaProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
     if (!res.ok) return { ok: false, error: res.error };
 
-    const nuevoDefecto: DefectoEnsamble = {
-      id: res.data?.data?.id || defectosEnsamble.length + 1,
-      id_orden: idOrden,
-      id_linea: sesion.linea.id,
-      id_turno: sesion.turno.id,
-      id_operador: sesion.usuario.id,
-      id_defecto: idDefecto,
-      defecto_descripcion: def?.descripcion || 'Defecto de Ensamble',
-      cantidad,
-      observaciones,
-      fecha_hora: new Date().toISOString().replace('T', ' ').substring(0, 19),
-    };
-    setDefectosEnsamble((prev) => [nuevoDefecto, ...prev]);
+    await cargarOperacionCore();
+    if (!backendOnline || IS_STATIC_REMOTE_DEMO) {
+      const nuevoDefecto: DefectoEnsamble = {
+        id: Number(res.data?.data?.id || defectosEnsamble.length + 1),
+        id_orden: idOrden,
+        id_linea: sesion.linea.id,
+        id_turno: sesion.turno.id,
+        id_operador: sesion.usuario.id,
+        id_defecto: idDefecto,
+        defecto_descripcion: def?.descripcion || 'Defecto de Ensamble',
+        cantidad,
+        observaciones,
+        fecha_hora: new Date().toISOString().replace('T', ' ').substring(0, 19),
+      };
+      setDefectosEnsamble((prev) => [nuevoDefecto, ...prev]);
+    }
     registrarBitacora('ENSAMBLE', `DEFECTO_LINEA: ${def?.descripcion} (x${cantidad})`, observaciones);
     return { ok: true };
   };
@@ -1047,7 +1272,8 @@ export const PlantaProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
     if (!res.ok) return { ok: false, error: res.error };
 
-    const serieGenerada = res.data.numero_serie || res.data.unidad?.numero_serie || undefined;
+    const rawSerie = res.data.numero_serie ?? res.data.unidad?.numero_serie;
+    const serieGenerada = rawSerie ? String(rawSerie) : undefined;
     await cargarOperacionCore();
 
     registrarBitacora(
@@ -1079,21 +1305,23 @@ export const PlantaProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
     await cargarOperacionCore();
 
-    const unidadRef = unidades.find((u) => u.numero_serie === numeroSerie);
-    const nuevaInspeccion: InspeccionCalidad = {
-      id: inspeccionesCalidad.length + 1,
-      id_unidad: unidadRef?.id || 0,
-      numero_serie: numeroSerie,
-      id_inspector: sesion.usuario.id,
-      inspector_nombre: sesion.usuario.nombre_completo,
-      id_estado_resultado: idEstadoCalidad,
-      estado_resultado_nombre: estadoObj?.nombre_estado || 'Aprobada',
-      id_defecto: idDefecto || null,
-      defecto_descripcion: defectoObj?.descripcion || null,
-      comentarios: comentarios || null,
-      fecha_inspeccion: new Date().toISOString().replace('T', ' ').substring(0, 16),
-    };
-    setInspeccionesCalidad((prev) => [nuevaInspeccion, ...prev]);
+    if (!backendOnline || IS_STATIC_REMOTE_DEMO) {
+      const unidadRef = unidades.find((u) => u.numero_serie === numeroSerie);
+      const nuevaInspeccion: InspeccionCalidad = {
+        id: inspeccionesCalidad.length + 1,
+        id_unidad: unidadRef?.id || 0,
+        numero_serie: numeroSerie,
+        id_inspector: sesion.usuario.id,
+        inspector_nombre: sesion.usuario.nombre_completo,
+        id_estado_resultado: idEstadoCalidad,
+        estado_resultado_nombre: estadoObj?.nombre_estado || 'Aprobada',
+        id_defecto: idDefecto || null,
+        defecto_descripcion: defectoObj?.descripcion || null,
+        comentarios: comentarios || null,
+        fecha_inspeccion: new Date().toISOString().replace('T', ' ').substring(0, 16),
+      };
+      setInspeccionesCalidad((prev) => [nuevaInspeccion, ...prev]);
+    }
 
     registrarBitacora('CALIDAD', `DICTAMEN: Serie ${numeroSerie} -> ${estadoObj?.nombre_estado}`, comentarios);
     return { ok: true };
@@ -1112,8 +1340,27 @@ export const PlantaProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     if (!res.ok) return { ok: false, error: res.error };
 
     await cargarOperacionCore();
-    const cajaCreada = res.data.data;
-    registrarBitacora('EMPAQUE', `APERTURA_CAJA: ${cajaCreada?.codigo_caja || 'Nueva caja'}`);
+    const rawCaja = (res.data.data || {}) as ApiRow;
+    const cap = Number(
+      rawCaja.capacidad ??
+        rawCaja.capacidad_maxima ??
+        CATALOGO_MODELOS.find((m) => m.id === idModelo)?.capacidad_caja ??
+        12
+    );
+    const cajaCreada: Caja = {
+      id: Number(rawCaja.id),
+      codigo_caja: String(rawCaja.codigo_caja || ''),
+      id_cliente: Number(rawCaja.id_cliente ?? idCliente),
+      id_modelo: Number(rawCaja.id_modelo ?? idModelo),
+      id_color: Number(rawCaja.id_color ?? idColor),
+      capacidad: cap,
+      piezas_actuales: Number(rawCaja.piezas_actuales ?? 0),
+      fecha_creacion: String(rawCaja.fecha_creacion || ''),
+      fecha_cierre: rawCaja.fecha_cierre ? String(rawCaja.fecha_cierre) : null,
+      estado: rawCaja.estado === 'Cerrada' ? 'Cerrada' : 'Abierta',
+      id_usuario_creador: Number(rawCaja.id_usuario_creador ?? sesion.usuario.id),
+    };
+    registrarBitacora('EMPAQUE', `APERTURA_CAJA: ${cajaCreada.codigo_caja || 'Nueva caja'}`);
     return { ok: true, caja: cajaCreada };
   };
 
@@ -1197,8 +1444,27 @@ export const PlantaProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     if (!res.ok) return { ok: false, error: res.error };
 
     await cargarOperacionCore();
-    registrarBitacora('EMBARQUES', `PROGRAMAR_EMBARQUE: ${res.data?.referencia_embarque || idPedido}`);
-    return { ok: true, embarque: res.data };
+    const rawEmb = (res.data || {}) as ApiRow;
+    const embarqueCreado: Embarque = {
+      id: Number(rawEmb.id),
+      referencia_embarque: String(rawEmb.referencia_embarque || ''),
+      id_pedido: String(rawEmb.folio_pedido || rawEmb.id_pedido || idPedido),
+      id_cliente: Number(rawEmb.id_cliente ?? idCliente),
+      id_transportista: Number(rawEmb.id_transportista ?? idTransportista),
+      nombre_chofer: String(rawEmb.nombre_chofer || nombreChofer),
+      placas_unidad: String(rawEmb.placas_unidad || placasUnidad),
+      fecha_programada: String(rawEmb.fecha_programada || fechaProgramada).substring(0, 16),
+      fecha_salida: rawEmb.fecha_salida ? String(rawEmb.fecha_salida).substring(0, 16) : null,
+      estado: String(rawEmb.estado || 'Programado'),
+      observaciones: rawEmb.observaciones ? String(rawEmb.observaciones) : null,
+      id_usuario_creo: Number(rawEmb.id_usuario_creo ?? sesion.usuario.id),
+      id_usuario_confirmo: rawEmb.id_usuario_confirmo ? Number(rawEmb.id_usuario_confirmo) : null,
+      fecha_creacion: String(rawEmb.fecha_creacion || '').substring(0, 16),
+      total_cajas: 0,
+      total_piezas: 0,
+    };
+    registrarBitacora('EMBARQUES', `PROGRAMAR_EMBARQUE: ${embarqueCreado.referencia_embarque || idPedido}`);
+    return { ok: true, embarque: embarqueCreado };
   };
 
   const asignarCajaEmbarque = async (idEmbarque: number, idCaja: number) => {
@@ -1285,7 +1551,8 @@ export const PlantaProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
     await cargarOperacionCore();
     registrarBitacora('TURNOS', `CIERRE_FORMAL_TURNO: ${sesion.linea.nombre_linea} - Turno ${sesion.turno.nombre_turno}`);
-    return { ok: true, cierre: res.data?.data || res.data };
+    const rawCierre = (res.data?.data ?? res.data) as unknown as CierreTurno;
+    return { ok: true, cierre: rawCierre };
   };
 
   const solicitarCorreccionCierre = async (idCierre: number, motivo: string) => {
@@ -1322,14 +1589,36 @@ export const PlantaProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     const res = await unidadesApi.getTrazabilidad(numeroSerie.trim().toUpperCase());
     if (!res.ok || !res.data?.unidad) return null;
     const d = res.data;
+    const rawU = d.unidad as ApiRow;
+    const unidadMapeada: Unidad = {
+      id: Number(rawU.id || 0),
+      id_orden: Number(rawU.id_orden || 0),
+      id_linea: Number(rawU.id_linea || 1),
+      id_turno: Number(rawU.id_turno || 1),
+      numero_serie: String(rawU.numero_serie || ''),
+      id_estado_calidad: rawU.id_estado_calidad ? Number(rawU.id_estado_calidad) : 0,
+      estado_calidad_nombre: String(
+        rawU.estado_calidad_nombre || rawU.estado_calidad_actual || 'Pendiente de Calidad'
+      ),
+      id_caja: rawU.id_caja ? Number(rawU.id_caja) : null,
+      fecha_ensamble: String(rawU.fecha_ensamble || rawU.fecha_creacion || '').replace('T', ' ').substring(0, 16),
+      modelo: String(rawU.modelo || rawU.nombre_modelo || ''),
+      color: String(rawU.color || rawU.nombre_color || ''),
+      cliente: String(rawU.cliente || rawU.nombre_cliente || ''),
+    };
+    const rawInspecciones = Array.isArray(d.inspecciones)
+      ? d.inspecciones
+      : Array.isArray(d.inspecciones_calidad)
+      ? d.inspecciones_calidad
+      : [];
     return {
-      unidad: d.unidad,
-      orden: d.orden || undefined,
-      prueba: d.prueba_funcional || undefined,
-      inspecciones: Array.isArray(d.inspecciones) ? d.inspecciones : [],
-      historial: Array.isArray(d.historial) ? d.historial : [],
-      caja: d.caja || undefined,
-      embarque: d.embarque || undefined,
+      unidad: unidadMapeada,
+      orden: (d.orden as unknown as Orden) || undefined,
+      prueba: (d.prueba_funcional as unknown as PruebaFuncional) || undefined,
+      inspecciones: rawInspecciones as unknown as InspeccionCalidad[],
+      historial: Array.isArray(d.historial) ? (d.historial as unknown as HistorialUnidad[]) : [],
+      caja: (d.caja as unknown as Caja) || undefined,
+      embarque: (d.embarque as unknown as Embarque) || undefined,
     };
   };
 
@@ -1354,6 +1643,7 @@ export const PlantaProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     cambiarTurnoSesion,
     ordenes,
     crearOrden,
+    actualizarOrden,
     importarOrdenesCsv,
     asignarLineaOrden,
     conteosEnsamble,

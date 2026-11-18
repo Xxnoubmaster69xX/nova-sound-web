@@ -9,7 +9,9 @@ export default function EnsambleStation() {
     defectosEnsamble,
     registrarConteoEnsamble,
     registrarDefectoEnsamble,
+    tienePermiso,
   } = usePlanta();
+  const puedeOperar = tienePermiso('ENSAMBLE_REGISTRAR');
 
   // Filtrar órdenes asignadas a la línea activa de la sesión
   const ordenesLinea = ordenes.filter((o) => o.id_linea_asignada === sesion.linea.id);
@@ -28,7 +30,7 @@ export default function EnsambleStation() {
   const [mensaje, setMensaje] = useState<{ tipo: 'ok' | 'err'; texto: string } | null>(null);
   const cantidadInputRef = useRef<HTMLInputElement>(null);
 
-  const ordenActiva = ordenes.find((o) => o.id === ordenSeleccionadaId);
+  const ordenActiva = ordenes.find((o) => o.id === ordenSeleccionadaId) || ordenesLinea[0] || ordenes[0];
 
   // Totales de la línea y turno actuales
   const totalPiezasTurno = conteosEnsamble
@@ -70,6 +72,10 @@ export default function EnsambleStation() {
 
   const handleGuardarRegistro = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!puedeOperar) {
+      setMensaje({ tipo: 'err', texto: 'Su rol actual es de solo lectura en Ensamble (RN-14).' });
+      return;
+    }
     if (!ordenActiva) {
       setMensaje({ tipo: 'err', texto: 'Seleccione una orden válida' });
       return;
@@ -228,6 +234,7 @@ export default function EnsambleStation() {
               </select>
               <button
                 type="button"
+                disabled={!puedeOperar}
                 className="btn btn-primary"
                 style={{ height: '36px', padding: '0 14px', fontSize: '0.78rem', whiteSpace: 'nowrap' }}
                 onClick={() => cantidadInputRef.current?.focus()}
@@ -316,7 +323,7 @@ export default function EnsambleStation() {
                   </button>
                   <button
                     type="button"
-                    disabled={!registroSeleccionado}
+                    disabled={!registroSeleccionado || !puedeOperar}
                     onClick={() => {
                       if (registroSeleccionado) {
                         setOrdenSeleccionadaId(registroSeleccionado.id_orden);
@@ -330,7 +337,7 @@ export default function EnsambleStation() {
                   </button>
                   <button
                     type="button"
-                    disabled={!registroSeleccionado}
+                    disabled={!registroSeleccionado || !puedeOperar}
                     onClick={() => {
                       if (!registroSeleccionado) return;
                       setRegistrosOcultosLocal((prev) => [...prev, registroSeleccionado.id]);
@@ -358,7 +365,7 @@ export default function EnsambleStation() {
                   <label className="form-label">ORDEN DE PRODUCCIÓN</label>
                   <select
                     className="form-select"
-                    value={ordenSeleccionadaId}
+                    value={ordenActiva?.id || ordenSeleccionadaId}
                     onChange={(e) => setOrdenSeleccionadaId(Number(e.target.value))}
                   >
                     {ordenes.map((ord) => (
@@ -472,6 +479,7 @@ export default function EnsambleStation() {
                         </div>
                         <button
                           type="button"
+                          disabled={!puedeOperar}
                           onClick={handleRegistrarDefectoSolo}
                           className="btn btn-danger"
                           style={{ height: '2.4rem', fontSize: '0.72rem' }}
@@ -519,7 +527,7 @@ export default function EnsambleStation() {
                   <button type="button" onClick={limpiarFormulario} className="btn btn-outline" style={{ flex: 1 }}>
                     CANCELAR
                   </button>
-                  <button type="submit" className="btn btn-yellow" style={{ flex: 1.5 }}>
+                  <button type="submit" disabled={!puedeOperar} className="btn btn-yellow" style={{ flex: 1.5 }}>
                     GUARDAR REGISTRO
                   </button>
                 </div>

@@ -1,11 +1,12 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { RolesEnum, EstadosCalidadEnum } from '../types/database';
-import { usePlanta } from '../context/PlantaContext';
+import { usePlanta, NOMBRES_ROLES } from '../context/PlantaContext';
 
 import Topbar from '../components/Topbar';
 import type { MenuItem } from '../components/Topbar';
 import Sidebar from '../components/Sidebar';
 
+import Inicio from './Areas/Inicio';
 import Ordenes from './Areas/Ordenes';
 import Ensamble from './Areas/Ensamble';
 import Pruebas from './Areas/Pruebas';
@@ -13,7 +14,18 @@ import Calidad from './Areas/Calidad';
 import Empaque from './Areas/Empaque';
 import Embarques from './Areas/Embarques';
 import Trazabilidad from './Areas/Trazabilidad';
+import Turnos from './Areas/Turnos';
+import Reportes from './Areas/Reportes';
 import Configuracion from './Areas/Configuracion';
+
+const PERMISO_ESCRITURA_ESTACION: Record<string, string> = {
+  ordenes: 'ORDENES_GESTIONAR',
+  ensamble: 'ENSAMBLE_REGISTRAR',
+  pruebas: 'PRUEBA_EVALUAR',
+  calidad: 'CALIDAD_DICTAMINAR',
+  empaque: 'EMPAQUE_OPERAR',
+  embarques: 'EMBARQUE_OPERAR',
+};
 
 export default function Main() {
   const {
@@ -22,6 +34,7 @@ export default function Main() {
     cerrarSesion,
     vistaActual,
     setVistaActual,
+    tienePermiso,
     ordenes,
     unidades,
     cajas,
@@ -41,8 +54,16 @@ export default function Main() {
   const cajasListasEmbarque = cajas.filter((c) => c.estado === 'Cerrada' && !c.id_embarque_asignado).length;
   const autorizacionesPendientes = solicitudesAutorizacion.filter((s) => s.estado === 'PENDIENTE').length;
 
-  // Menú alineado estrictamente con las ventanas prometidas en Avances de ventanas para Nova Sound.pdf
+  // Menú completo con los 11 módulos documentados en README.md
   const menuItems: MenuItem[] = [
+    {
+      id: 'inicio',
+      code: '00',
+      label: 'Telemetría',
+      iconName: 'dashboard',
+      roles: [1, 2, 3, 4, 5, 6, 7, 8, 9],
+      component: <Inicio />,
+    },
     {
       id: 'ordenes',
       code: '01',
@@ -105,6 +126,24 @@ export default function Main() {
       component: <Trazabilidad />,
     },
     {
+      id: 'turnos',
+      code: '07',
+      label: 'Cierre de Turno',
+      iconName: 'schedule',
+      roles: [RolesEnum.LIDER_LINEA, RolesEnum.SUPERVISOR_ALMACEN, RolesEnum.SUBGERENTE_PRODUCCION, RolesEnum.GERENTE_PRODUCCION, RolesEnum.GERENTE_PLANTA, RolesEnum.ADMINISTRADOR],
+      badge: autorizacionesPendientes,
+      badgeAlert: autorizacionesPendientes > 0,
+      component: <Turnos />,
+    },
+    {
+      id: 'reportes',
+      code: '08',
+      label: 'Reportes & Pareto',
+      iconName: 'analytics',
+      roles: [RolesEnum.LIDER_LINEA, RolesEnum.SUBGERENTE_PRODUCCION, RolesEnum.GERENTE_PRODUCCION, RolesEnum.GERENTE_PLANTA, RolesEnum.ADMINISTRADOR],
+      component: <Reportes />,
+    },
+    {
       id: 'config',
       code: 'SYS',
       label: 'Sistema',
@@ -116,10 +155,20 @@ export default function Main() {
 
   const [openTabIds, setOpenTabIds] = useState<string[]>(['ordenes']);
 
-  // Si se navega a una estación desde un acceso directo (ej. VER 360°), abrir su pestaña automáticamente
-  useEffect(() => {
-    setOpenTabIds((prev) => (prev.includes(vistaActual) ? prev : [...prev, vistaActual]));
-  }, [vistaActual]);
+  // Si el usuario es Administrador (rol 9), tiene acceso total a todas las estaciones (en modo solo lectura si no es puesto operativo).
+  // De lo contrario se filtran por su rol.
+  const itemsPermitidos =
+    sesion.usuario.id_rol === RolesEnum.ADMINISTRADOR
+      ? menuItems
+      : menuItems.filter((item) => (item.roles as readonly number[]).includes(sesion.usuario.id_rol));
+
+  const vistaActivaItem = itemsPermitidos.find((i) => i.id === vistaActual) || itemsPermitidos[0];
+  const vistaEfectiva = vistaActivaItem?.id || vistaActual;
+  const idsPermitidos = new Set(itemsPermitidos.map((i) => i.id));
+  const openTabsPermitidos = openTabIds.filter((id) => idsPermitidos.has(id));
+  const activeOpenTabIds = openTabsPermitidos.includes(vistaEfectiva)
+    ? openTabsPermitidos
+    : [...openTabsPermitidos, vistaEfectiva];
 
   const handleSelectModule = (id: string) => {
     setOpenTabIds((prev) => (prev.includes(id) ? prev : [...prev, id]));
@@ -127,31 +176,30 @@ export default function Main() {
   };
 
   const handleCloseTab = (id: string) => {
-    setOpenTabIds((prev) => {
-      if (prev.length <= 1) return prev;
-      const next = prev.filter((t) => t !== id);
-      if (vistaActual === id) {
-        setVistaActual(next[next.length - 1]);
-      }
-      return next;
-    });
+    if (activeOpenTabIds.length <= 1) return;
+    const next = activeOpenTabIds.filter((t) => t !== id);
+    setOpenTabIds(next);
+    if (vistaEfectiva === id) {
+      setVistaActual(next[next.length - 1]);
+    }
   };
 
-  // Si el usuario es Administrador (rol 9), tiene acceso total a todas las estaciones.
-  // De lo contrario se filtran por su rol.
-  const itemsPermitidos =
-    sesion.usuario.id_rol === RolesEnum.ADMINISTRADOR
-      ? menuItems
-      : menuItems.filter((item) => (item.roles as readonly number[]).includes(sesion.usuario.id_rol));
+  const permisoRequerido = PERMISO_ESCRITURA_ESTACION[vistaEfectiva];
+  const esSoloLectura = Boolean(permisoRequerido && !tienePermiso(permisoRequerido));
+  const nombreRolActual =
+    NOMBRES_ROLES[sesion.usuario.id_rol] || sesion.usuario.nombre_rol || `Rol ${sesion.usuario.id_rol}`;
 
   return (
-    <div className="app-container" style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
+    <div
+      className="app-container"
+      style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', maxWidth: '100vw', overflowX: 'hidden' }}
+    >
       {/* Topbar Soft New-Tech con pestañas suaves */}
       <Topbar
         sesion={sesion}
         items={itemsPermitidos}
-        openTabIds={openTabIds}
-        vistaActual={vistaActual}
+        openTabIds={activeOpenTabIds}
+        vistaActual={vistaEfectiva}
         setVistaActual={setVistaActual}
         onCloseTab={handleCloseTab}
         onCambiarRol={cambiarUsuarioSimulado}
@@ -159,17 +207,28 @@ export default function Main() {
       />
 
       {/* Contenedor principal: Sidebar de módulos (hover/expandible) + Estación activa */}
-      <div style={{ display: 'flex', flex: 1, minHeight: 0 }}>
+      <div style={{ display: 'flex', flex: 1, minHeight: 0, minWidth: 0 }}>
         <Sidebar
           items={itemsPermitidos}
-          vistaActual={vistaActual}
-          openTabIds={openTabIds}
+          vistaActual={vistaEfectiva}
+          openTabIds={activeOpenTabIds}
           onSelectModule={handleSelectModule}
         />
 
         <main className="main-content tex-grid" style={{ flex: 1, minWidth: 0, position: 'relative', overflowX: 'hidden' }}>
           <div style={{ position: 'relative', zIndex: 2 }}>
-            {itemsPermitidos.find((i) => i.id === vistaActual)?.component || itemsPermitidos[0]?.component}
+            {esSoloLectura && (
+              <div
+                className="alert-banner alert-banner-warn"
+                style={{ marginBottom: '14px' }}
+                role="status"
+              >
+                <span>
+                  Modo solo lectura: Tu perfil ({nombreRolActual}) solo tiene acceso de consulta en esta estación y no puede guardar ni modificar datos.
+                </span>
+              </div>
+            )}
+            {vistaActivaItem?.component}
           </div>
         </main>
       </div>

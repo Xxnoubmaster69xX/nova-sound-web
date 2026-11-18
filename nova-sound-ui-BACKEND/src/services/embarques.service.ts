@@ -12,12 +12,12 @@ export class EmbarquesService {
   }
 
   async create(data: {
-    referencia_embarque: string;
-    id_pedido?: number;
+    referencia_embarque?: string;
+    id_pedido?: number | string;
     id_cliente: number;
     id_transportista: number;
     fecha_programada: string;
-    observaciones: string;
+    observaciones?: string;
     id_usuario_creo: number;
   }) {
     return this.repo.create(data);

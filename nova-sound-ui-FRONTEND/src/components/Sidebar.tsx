@@ -25,6 +25,7 @@ export default function Sidebar({ items, vistaActual, openTabIds, onSelectModule
         position: 'relative',
         width: pinned ? '232px' : '58px',
         minWidth: pinned ? '232px' : '58px',
+        flexShrink: 0,
         backgroundColor: '#181a1f',
         transition: 'width 0.3s cubic-bezier(0.16, 1, 0.3, 1), min-width 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
         overflow: 'visible',
@@ -33,20 +34,21 @@ export default function Sidebar({ items, vistaActual, openTabIds, onSelectModule
       }}
       aria-label="Módulos de planta"
     >
-      {/* Panel interno fijo a 232px sin cambios de width/fondo al cerrar (cero blip/glitch) */}
+      {/* Panel interno limitado a 58px cuando está colapsado para no tapar el contenido */}
       <div
         style={{
           position: pinned ? 'relative' : 'absolute',
           top: 0,
           bottom: 0,
           left: 0,
-          width: '232px',
+          width: expanded ? '232px' : '58px',
           backgroundColor: 'transparent',
           display: 'flex',
           flexDirection: 'column',
           justifyContent: 'space-between',
           overflow: 'hidden',
           pointerEvents: expanded ? 'auto' : 'none',
+          transition: 'width 0.24s cubic-bezier(0.16, 1, 0.3, 1)',
         }}
       >
         {/* Riel base izquierdo de 58px */}
@@ -76,7 +78,7 @@ export default function Sidebar({ items, vistaActual, openTabIds, onSelectModule
           ))}
         </div>
 
-      <div style={{ position: 'relative', zIndex: 2, display: 'flex', flexDirection: 'column', padding: '10px 8px' }}>
+      <div style={{ position: 'relative', zIndex: 2, display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, padding: '10px 8px' }}>
         {/* Cabecera compacta de Áreas + Pin */}
         <div
           style={{
@@ -127,7 +129,7 @@ export default function Sidebar({ items, vistaActual, openTabIds, onSelectModule
         </div>
 
         {/* Lista de módulos */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', flex: 1, minHeight: 0, overflowY: 'auto' }}>
           {items.map((item, idx) => {
             const activo = vistaActual === item.id;
             const abierto = openTabIds.includes(item.id);
